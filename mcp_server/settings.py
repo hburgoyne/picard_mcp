@@ -42,6 +42,9 @@ INSTALLED_APPS = [
     # Third-party apps
     'rest_framework',
     'corsheaders',
+    'drf_spectacular',
+    'django_audit_log',
+    'django_extensions',
     
     # Local apps
     'users.apps.UsersConfig',
@@ -49,6 +52,7 @@ INSTALLED_APPS = [
     'memories.apps.MemoriesConfig',
     'permissions.apps.PermissionsConfig',
     'embeddings.apps.EmbeddingsConfig',
+    'api.apps.ApiConfig',
 ]
 
 MIDDLEWARE = [
@@ -146,10 +150,14 @@ AUTH_USER_MODEL = 'users.User'
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework_simplejwt.authentication.JWTAuthentication',
+        'rest_framework.authentication.SessionAuthentication',
     ],
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',
-    ]
+    ],
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
+    'PAGE_SIZE': 20,
 }
 
 # CORS settings
@@ -160,8 +168,26 @@ from datetime import timedelta
 
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
-    'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
+    'ROTATE_REFRESH_TOKENS': True,
+    'BLACKLIST_AFTER_ROTATION': True,
+    'UPDATE_LAST_LOGIN': True,
 }
+
+# API Documentation
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'MCP Server API',
+    'DESCRIPTION': 'Model Context Protocol Server for managing user personas and memories',
+    'VERSION': '1.0.0',
+    'SERVE_INCLUDE_SCHEMA': False,
+    'SWAGGER_UI_DIST': 'SIDECAR',
+    'SWAGGER_UI_FAVICON_HREF': 'SIDECAR',
+    'REDOC_DIST': 'SIDECAR',
+    'COMPONENT_SPLIT_REQUEST': True,
+}
+
+# Vector Database Settings
+VECTOR_SIZE = 384  # All-MiniLM-L6-v2 embedding size
 
 # Celery Configuration
 CELERY_BROKER_URL = 'redis://redis:6379/0'

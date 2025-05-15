@@ -5,21 +5,41 @@ djangorestframework-simplejwt>=5.3.0
 
 # Database
 psycopg2-binary>=2.9.6
-pgvector>=0.2.0
+# Temporarily removed pgvector and django-pgvector as they require Python 3.10+
+# Will add them back once we upgrade the Python version
+
+# Vector Search & Embeddings
+# Temporarily disabled as they require Python 3.10+
+# sentence-transformers>=2.2.2
+# numpy>=1.24.0
+# torch>=2.0.0  # Now using Python 3.10 which has better compatibility
 
 # API & Security
 django-cors-headers>=4.3.0
 python-dotenv>=1.0.0
+drf-spectacular>=0.27.1  # For OpenAPI 3.0 schema generation
 
 # Async Tasks
-celery>=5.2.3
-redis>=4.1.0
+celery>=5.3.0  # Using newer version with Python 3.10
+redis>=4.5.0
 
 # Development
-django-extensions>=3.1.5
-pytest>=6.2.5
-pytest-django>=4.4.0
+django-extensions>=3.2.0
+pytest>=7.4.0
+pytest-django>=4.5.2
 factory-boy>=3.2.1
+pytest-cov>=4.1.0
 
 # API Documentation
-drf-yasg>=1.20.0
+drf-spectacular-sidecar>=2023.9.1  # Required for serving Swagger UI/ReDoc
+
+# Monitoring
+# Using versions compatible with Python 3.9
+django-audit-log-middleware==0.0.5
+django-audit-log==0.7.0  # Last version compatible with Python 3.9
+
+# Web Server
+gunicorn>=21.2.0
+
+# Utilities
+python-dateutil>=2.8.2

@@ -100,36 +100,51 @@ class PicardOAuthProvider(OAuthServerProvider):
             print(f"Client redirect URIs: {client.redirect_uris}")
             print(f"Client allowed scopes: {client.allowed_scopes}")
             
+            # Convert the list of scopes to a space-separated string
+            scope_str = ' '.join(client.allowed_scopes) if client.allowed_scopes else None
+            print(f"Converted scope string: {scope_str}")
+            
             return OAuthClientInformationFull(
                 client_id=client.client_id,
                 client_secret=client.client_secret,
                 redirect_uris=[str(uri) for uri in client.redirect_uris],
-                scopes=client.allowed_scopes
+                scope=scope_str  # Use scope (string) instead of scopes (list)
             )
     
     async def register_client(self, client_info: OAuthClientInformationFull) -> None:
         """Saves client information as part of registering it"""
+        print(f"=== Registering client: {client_info.client_id} ===")
+        print(f"Client scope: {client_info.scope}")
+        
+        # Extract scopes from the scope string
+        client_scopes = client_info.scope.split() if client_info.scope else []
+        print(f"Parsed scopes: {client_scopes}")
+        
         async for db in get_db():
             # Check if client already exists
             client_result = await db.execute(
                 select(OAuthClient).where(OAuthClient.client_id == client_info.client_id)
             )
-            client = client_result.scalars().first()
+            existing_client = client_result.scalars().first()
             
-            if client:
-                raise RegistrationError(
-                    error="invalid_client_metadata",
-                    error_description="Client already exists"
+            if existing_client:
+                # Update existing client
+                existing_client.client_secret = client_info.client_secret
+                existing_client.redirect_uris = [str(uri) for uri in client_info.redirect_uris]
+                existing_client.allowed_scopes = client_scopes
+                existing_client.updated_at = datetime.utcnow()
+                print(f"Updated existing client with scopes: {client_scopes}")
+            else:
+                # Create new client
+                client = OAuthClient(
+                    client_id=client_info.client_id,
+                    client_secret=client_info.client_secret,
+                    redirect_uris=[str(uri) for uri in client_info.redirect_uris],
+                    allowed_scopes=client_scopes
                 )
+                db.add(client)
+                print(f"Created new client with scopes: {client_scopes}")
             
-            # Create new client
-            client = OAuthClient(
-                client_id=client_info.client_id,
-                client_secret=client_info.client_secret,
-                redirect_uris=[str(uri) for uri in client_info.redirect_uris],
-                allowed_scopes=client_info.scope.split()
-            )
-            db.add(client)
             await db.commit()
     
     async def authorize(self, client: OAuthClientInformationFull, params: AuthorizationParams) -> str:
@@ -137,13 +152,21 @@ class PicardOAuthProvider(OAuthServerProvider):
         print("=== Authorization Request Received ===")
         print(f"Client ID: {client.client_id}")
         print(f"Redirect URI: {params.redirect_uri}")
-        print(f"Requested Scope: {params.scope}")
-        print(f"Requested Scopes (parsed): {params.scopes if hasattr(params, 'scopes') else 'No scopes attribute'}")
+        print(f"Requested Scopes: {params.scopes}")
+        print(f"Requested Scopes Type: {type(params.scopes)}")
         print(f"State: {params.state}")
         print(f"Client object type: {type(client)}")
         print(f"Client dir: {dir(client)}")
-        print(f"Client scopes: {client.scopes if hasattr(client, 'scopes') else 'No scopes attribute'}")
-        print(f"Client allowed_scopes: {client.allowed_scopes if hasattr(client, 'allowed_scopes') else 'No allowed_scopes attribute'}")
+        
+        # Debug all client attributes
+        print("=== Client Attributes ===")
+        for attr in dir(client):
+            if not attr.startswith('_'):
+                try:
+                    value = getattr(client, attr)
+                    print(f"Client.{attr} = {value} (type: {type(value)})")
+                except Exception as e:
+                    print(f"Error accessing Client.{attr}: {e}")
         
         # Validate redirect URI
         if not params.redirect_uri:
@@ -153,26 +176,39 @@ class PicardOAuthProvider(OAuthServerProvider):
             )
         
         # Validate scopes
-        if params.scope:
-            # Normalize scopes by splitting and rejoining to ensure consistent format
-            requested_scopes = set(params.scope.split())
+        if params.scopes:
+            print("=== Scope Validation Debug ===")
+            # Convert the list of scopes to a set for comparison
+            requested_scopes = set(params.scopes)
+            print(f"Requested scopes: {requested_scopes}")
             
             # Try to get scopes from different possible attributes
             client_scopes = []
-            if hasattr(client, 'scopes'):
+            if hasattr(client, 'scope') and client.scope is not None:
+                print(f"Found client.scope: {client.scope} (type: {type(client.scope)})")
+                # Split the scope string into a list
+                client_scopes = client.scope.split()
+            elif hasattr(client, 'scopes'):
                 client_scopes = client.scopes
+                print(f"Found client.scopes: {client_scopes} (type: {type(client_scopes)})")
             elif hasattr(client, 'allowed_scopes'):
                 client_scopes = client.allowed_scopes
+                print(f"Found client.allowed_scopes: {client_scopes} (type: {type(client_scopes)})")
+            else:
+                print("No scope, scopes, or allowed_scopes attribute found on client")
             
             allowed_scopes = set(client_scopes)
             
-            print(f"Requested scopes (normalized): {requested_scopes}")
-            print(f"Allowed scopes (normalized): {allowed_scopes}")
+            print(f"Final allowed_scopes: {allowed_scopes}")
+            print(f"Requested scopes: {requested_scopes}")
             
             # Check if all requested scopes are allowed
             invalid_scopes = requested_scopes - allowed_scopes
             if invalid_scopes:
                 print(f"Invalid scopes detected: {invalid_scopes}")
+                print(f"Requested: {requested_scopes}")
+                print(f"Allowed: {allowed_scopes}")
+                print(f"Difference: {requested_scopes - allowed_scopes}")
                 raise AuthorizeError(
                     error="invalid_scope",
                     error_description=f"Client was not registered with scope {', '.join(invalid_scopes)}"

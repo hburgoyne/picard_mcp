@@ -100,7 +100,7 @@ def oauth_authorize(request):
         'response_type': 'code',
         'client_id': settings.OAUTH_CLIENT_ID,
         'redirect_uri': settings.OAUTH_REDIRECT_URI,
-        'scope': settings.OAUTH_SCOPES,
+        'scope': settings.OAUTH_SCOPES,  # This is already a space-separated string
         'state': state,
         'code_challenge': code_challenge,
         'code_challenge_method': 'S256'
@@ -125,7 +125,8 @@ def oauth_callback(request):
         return JsonResponse({'error': 'missing_code'}, status=400)
     
     # Exchange authorization code for tokens
-    token_url = f"{settings.MCP_SERVER_URL}/oauth/token"
+    # Use MCP_SERVER_INTERNAL_URL for server-to-server communication
+    token_url = f"{getattr(settings, 'MCP_SERVER_INTERNAL_URL', settings.MCP_SERVER_URL)}/oauth/token"
     print(f"Token URL: {token_url}")
     print(f"Client ID: {settings.OAUTH_CLIENT_ID}")
     print(f"Redirect URI: {settings.OAUTH_REDIRECT_URI}")
@@ -193,7 +194,7 @@ def refresh_token(request):
     
     # Exchange the refresh token for a new access token
     # Use MCP_SERVER_INTERNAL_URL for server-to-server communication
-    token_url = f"{getattr(settings, 'MCP_SERVER_INTERNAL_URL', settings.MCP_SERVER_URL)}/auth/token"
+    token_url = f"{getattr(settings, 'MCP_SERVER_INTERNAL_URL', settings.MCP_SERVER_URL)}/oauth/token"
     data = {
         'grant_type': 'refresh_token',
         'refresh_token': token.refresh_token,

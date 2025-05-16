@@ -316,8 +316,11 @@ class PicardOAuthProvider(OAuthServerProvider):
                     algorithms=[settings.JWT_ALGORITHM]
                 )
                 user_id = payload["sub"]
+                # Convert user_id from string to integer to match the database column type
+                user_id_int = int(user_id)
+                print(f"Looking up user with ID: {user_id_int} (converted from string: {user_id})")
                 user_result = await db.execute(
-                    select(User).where(User.id == user_id)
+                    select(User).where(User.id == user_id_int)
                 )
                 user = user_result.scalars().first()
                 
@@ -355,10 +358,27 @@ class PicardOAuthProvider(OAuthServerProvider):
                     algorithm=settings.JWT_ALGORITHM
                 )
                 
+                # Get the OAuthClient record by client_id
+                client_result = await db.execute(
+                    select(OAuthClient).where(OAuthClient.client_id == client.client_id)
+                )
+                oauth_client = client_result.scalars().first()
+                
+                if not oauth_client:
+                    print(f"=== TokenError being raised ===")
+                    print(f"Error type: unauthorized_client")
+                    print(f"Error description: Client not found")
+                    print(f"Client ID: {client.client_id}")
+                    print(f"OAuthClient ID: {oauth_client.id if oauth_client else None}")
+                    raise TokenError(
+                        error="unauthorized_client",
+                        error_description="Client not found"
+                    )
+                
                 # Store tokens in database
                 token = OAuthToken(
-                    user_id=user.id,
-                    client_id=client.client_id,
+                    user_id=int(user.id),  # Ensure user_id is an integer
+                    client_id=oauth_client.id,  # Use the database ID instead of the client_id string
                     access_token=access_token,
                     refresh_token=refresh_token,
                     scopes=authorization_code.scopes,
@@ -367,18 +387,38 @@ class PicardOAuthProvider(OAuthServerProvider):
                 db.add(token)
                 await db.commit()
                 
-                # Return tokens
-                return OAuthToken(
-                    access_token=access_token,
-                    token_type="bearer",
-                    expires_in=settings.JWT_ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-                    refresh_token=refresh_token,
-                    scope=" ".join(authorization_code.scopes)
-                )
-            except jwt.JWTError:
+                # Create response object with the correct fields
+                response = {
+                    "access_token": access_token,
+                    "refresh_token": token.refresh_token,
+                    "token_type": "bearer",
+                    "expires_in": settings.JWT_ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+                    "scope": " ".join(authorization_code.scopes)
+                }
+                print(f"=== Returning token response ===")
+                print(f"Access token: {access_token[:10]}... (truncated)")
+                print(f"Refresh token: {token.refresh_token[:10]}... (truncated)")
+                print(f"Expires in: {settings.JWT_ACCESS_TOKEN_EXPIRE_MINUTES} minutes")
+                print(f"Scopes: {response['scope']}")
+                return response
+            except jwt.JWTError as e:
+                print(f"JWT Error in exchange_authorization_code: {str(e)}")
+                print(f"=== TokenError being raised ===")
+                print(f"Error type: invalid_grant")
+                print(f"Error description: Invalid authorization code: {str(e)}")
+                print(f"Client ID: {client.client_id}")
+                print(f"Authorization code: {authorization_code.code if hasattr(authorization_code, 'code') else None}")
                 raise TokenError(
                     error="invalid_grant",
-                    error_description="Invalid authorization code"
+                    error_description=f"Invalid authorization code: {str(e)}"
+                )
+            except Exception as e:
+                print(f"Unexpected error in exchange_authorization_code: {type(e).__name__}: {str(e)}")
+                import traceback
+                traceback.print_exc()
+                raise TokenError(
+                    error="server_error",
+                    error_description=f"Server error: {str(e)}"
                 )
     
     async def load_refresh_token(self, client: OAuthClientInformationFull, refresh_token: str) -> RefreshToken | None:
@@ -444,13 +484,25 @@ class PicardOAuthProvider(OAuthServerProvider):
             token.expires_at = access_token_expires
             await db.commit()
             
-            # Return tokens
-            return OAuthToken(
-                access_token=access_token,
-                token_type="bearer",
-                expires_in=settings.JWT_ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-                refresh_token=token.refresh_token,
-                scope=" ".join(scopes or token.scopes)
+            # Create response object with the correct fields
+            response = {
+                "access_token": access_token,
+                "refresh_token": token.refresh_token,
+                "token_type": "bearer",
+                "expires_in": settings.JWT_ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+                "scope": " ".join(scopes or token.scopes)
+            }
+            print(f"=== Returning refresh token response ===")
+            print(f"Access token: {access_token[:10]}... (truncated)")
+            print(f"Refresh token: {token.refresh_token[:10]}... (truncated)")
+            print(f"Expires in: {settings.JWT_ACCESS_TOKEN_EXPIRE_MINUTES} minutes")
+            print(f"Scopes: {response['scope']}")
+            return TokenResponse(
+                access_token=response["access_token"],
+                refresh_token=response["refresh_token"],
+                token_type=response["token_type"],
+                expires_in=response["expires_in"],
+                scope=response["scope"]
             )
     
     async def token(self, request: TokenRequest) -> TokenResponse:
@@ -466,13 +518,31 @@ class PicardOAuthProvider(OAuthServerProvider):
         try:
             if request.grant_type == "authorization_code":
                 # Load authorization code
+                # Get client information first
+                client_info = await self.get_client(request.client_id)
+                if not client_info:
+                    return TokenResponse(
+                        error="invalid_client",
+                        error_description="Client not found"
+                    )
+                
+                # Verify client secret
+                if client_info.client_secret != request.client_secret:
+                    return TokenResponse(
+                        error="invalid_client",
+                        error_description="Invalid client credentials"
+                    )
+                
+                # Verify redirect URI
+                if request.redirect_uri not in client_info.redirect_uris:
+                    return TokenResponse(
+                        error="invalid_request",
+                        error_description="Invalid redirect URI"
+                    )
+                
+                # Load authorization code
                 authorization_code = await self.load_authorization_code(
-                    client=OAuthClientInformationFull(
-                        client_id=request.client_id,
-                        client_secret=request.client_secret,
-                        redirect_uris=[request.redirect_uri],
-                        scopes=[]
-                    ),
+                    client=client_info,
                     authorization_code=request.code
                 )
                 
@@ -487,32 +557,62 @@ class PicardOAuthProvider(OAuthServerProvider):
                 try:
                     print("Exchanging authorization code for tokens...")
                     tokens = await self.exchange_authorization_code(
-                        client=OAuthClientInformationFull(
-                            client_id=request.client_id,
-                            client_secret=request.client_secret,
-                            redirect_uris=[request.redirect_uri],
-                            scopes=[]
-                        ),
+                        client=client_info,
                         authorization_code=authorization_code
                     )
                     print(f"Successfully exchanged code for tokens: {tokens}")
                     return tokens
                 except TokenError as e:
-                    print(f"Error exchanging authorization code: {e}")
-                    return TokenResponse(
-                        error=e.error,
-                        error_description=e.error_description
-                    )
+                    print("=== TokenError caught in token handler ===")
+                    print(f"Error type: {e.error}")
+                    print(f"Error description: {e.error_description}")
+                    print(f"Client ID: {request.client_id}")
+                    print(f"Grant type: {request.grant_type}")
+                    print(f"Code: {request.code}")
+                    print(f"Redirect URI: {request.redirect_uri}")
+                    print(f"Scope: {request.scope}")
+                    print(f"Full error object: {str(e)}")
+                    
+                    try:
+                        # Attempt to create TokenErrorResponse directly
+                        error_response = TokenResponse(
+                            error=e.error,
+                            error_description=e.error_description
+                        )
+                        print(f"Successfully created TokenErrorResponse: {error_response}")
+                        return error_response
+                    except Exception as creation_error:
+                        print("=== Error creating TokenErrorResponse ===")
+                        print(f"Error type: {type(creation_error).__name__}")
+                        print(f"Error message: {str(creation_error)}")
+                        print(f"Attempted error: {e.error}")
+                        print(f"Attempted error_description: {e.error_description}")
+                        
+                        # Fallback to a basic error response
+                        return TokenResponse(
+                            error="invalid_request",
+                            error_description="Internal server error occurred while processing request"
+                        )
             
             elif request.grant_type == "refresh_token":
+                # Get client information first
+                client_info = await self.get_client(request.client_id)
+                if not client_info:
+                    return TokenResponse(
+                        error="invalid_client",
+                        error_description="Client not found"
+                    )
+                
+                # Verify client secret
+                if client_info.client_secret != request.client_secret:
+                    return TokenResponse(
+                        error="invalid_client",
+                        error_description="Invalid client credentials"
+                    )
+                
                 # Load refresh token
                 refresh_token = await self.load_refresh_token(
-                    client=OAuthClientInformationFull(
-                        client_id=request.client_id,
-                        client_secret=request.client_secret,
-                        redirect_uris=[request.redirect_uri],
-                        scopes=[]
-                    ),
+                    client=client_info,
                     refresh_token=request.refresh_token
                 )
                 
@@ -528,23 +628,42 @@ class PicardOAuthProvider(OAuthServerProvider):
                     scopes = request.scope.split() if request.scope else None
                     print("Exchanging refresh token for tokens...")
                     tokens = await self.exchange_refresh_token(
-                        client=OAuthClientInformationFull(
-                            client_id=request.client_id,
-                            client_secret=request.client_secret,
-                            redirect_uris=[request.redirect_uri],
-                            scopes=[]
-                        ),
+                        client=client_info,
                         refresh_token=refresh_token,
                         scopes=scopes
                     )
                     print(f"Successfully exchanged refresh token for tokens: {tokens}")
                     return tokens
                 except TokenError as e:
-                    print(f"Error exchanging refresh token: {e}")
-                    return TokenResponse(
-                        error=e.error,
-                        error_description=e.error_description
-                    )
+                    print("=== TokenError caught in token handler ===")
+                    print(f"Error type: {e.error}")
+                    print(f"Error description: {e.error_description}")
+                    print(f"Client ID: {request.client_id}")
+                    print(f"Grant type: {request.grant_type}")
+                    print(f"Refresh token: {request.refresh_token[:10]}... (truncated)")
+                    print(f"Scope: {request.scope}")
+                    print(f"Full error object: {str(e)}")
+                    
+                    try:
+                        # Attempt to create TokenErrorResponse directly
+                        error_response = TokenResponse(
+                            error=e.error,
+                            error_description=e.error_description
+                        )
+                        print(f"Successfully created TokenErrorResponse: {error_response}")
+                        return error_response
+                    except Exception as creation_error:
+                        print("=== Error creating TokenErrorResponse ===")
+                        print(f"Error type: {type(creation_error).__name__}")
+                        print(f"Error message: {str(creation_error)}")
+                        print(f"Attempted error: {e.error}")
+                        print(f"Attempted error_description: {e.error_description}")
+                        
+                        # Fallback to a basic error response
+                        return TokenResponse(
+                            error="invalid_request",
+                            error_description="Internal server error occurred while processing request"
+                        )
             
             else:
                 print(f"Unsupported grant type: {request.grant_type}")
@@ -553,7 +672,9 @@ class PicardOAuthProvider(OAuthServerProvider):
                     error_description="Unsupported grant type"
                 )
         except Exception as e:
-            print(f"Error in token: {str(e)}")
+            print(f"Error in token: {type(e).__name__}: {str(e)}")
+            import traceback
+            traceback.print_exc()
             return TokenResponse(
                 error="server_error",
                 error_description=str(e)

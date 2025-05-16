@@ -26,6 +26,14 @@ else:
 echo "Collecting static files..."
 python manage.py collectstatic --noinput
 
+# Wait for the MCP server to be ready
+echo "Waiting for MCP server to be ready..."
+sleep 5
+
+# Register the OAuth client with the MCP server
+echo "Registering OAuth client with MCP server..."
+python register_oauth_client.py
+
 echo "Django client app initialized successfully!"
 echo "You can now access the app at http://localhost:8000"
 echo "Admin username: admin"

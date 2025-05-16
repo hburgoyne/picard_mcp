@@ -1,5 +1,8 @@
 import json
 import uuid
+import base64
+import hashlib
+import os
 import requests
 from datetime import datetime, timedelta
 
@@ -14,6 +17,20 @@ from django.urls import reverse
 
 from .models import OAuthToken
 from .forms import UserRegistrationForm, UserLoginForm
+
+
+# Helper functions for PKCE (Proof Key for Code Exchange)
+def generate_code_verifier():
+    """Generate a code verifier for PKCE"""
+    code_verifier = base64.urlsafe_b64encode(os.urandom(40)).decode('utf-8')
+    return code_verifier.rstrip('=')
+
+
+def generate_code_challenge(code_verifier):
+    """Generate a code challenge for PKCE using S256 method"""
+    code_challenge = hashlib.sha256(code_verifier.encode('utf-8')).digest()
+    code_challenge = base64.urlsafe_b64encode(code_challenge).decode('utf-8')
+    return code_challenge.rstrip('=')
 
 
 def home(request):
@@ -63,6 +80,13 @@ def oauth_authorize(request):
     state = str(uuid.uuid4())
     request.session['oauth_state'] = state
     
+    # Generate PKCE code verifier and challenge
+    code_verifier = generate_code_verifier()
+    code_challenge = generate_code_challenge(code_verifier)
+    
+    # Store the code verifier in the session for later use
+    request.session['code_verifier'] = code_verifier
+    
     # Build the authorization URL - use MCP_SERVER_URL for browser redirects
     auth_url = f"{settings.MCP_SERVER_URL}/oauth/authorize"
     params = {
@@ -70,7 +94,9 @@ def oauth_authorize(request):
         'client_id': settings.OAUTH_CLIENT_ID,
         'redirect_uri': settings.OAUTH_REDIRECT_URI,
         'scope': settings.OAUTH_SCOPES,
-        'state': state
+        'state': state,
+        'code_challenge': code_challenge,
+        'code_challenge_method': 'S256'
     }
     
     # Construct the full URL with query parameters
@@ -92,13 +118,20 @@ def oauth_callback(request):
     
     # Exchange the authorization code for an access token
     # Use MCP_SERVER_INTERNAL_URL for server-to-server communication
-    token_url = f"{getattr(settings, 'MCP_SERVER_INTERNAL_URL', settings.MCP_SERVER_URL)}/auth/token"
+    token_url = f"{getattr(settings, 'MCP_SERVER_INTERNAL_URL', settings.MCP_SERVER_URL)}/oauth/token"
+    
+    # Get the code verifier from the session
+    code_verifier = request.session.get('code_verifier')
+    if not code_verifier:
+        return JsonResponse({'error': 'Code verifier not found in session'}, status=400)
+    
     data = {
         'grant_type': 'authorization_code',
         'code': code,
         'redirect_uri': settings.OAUTH_REDIRECT_URI,
         'client_id': settings.OAUTH_CLIENT_ID,
-        'client_secret': settings.OAUTH_CLIENT_SECRET
+        'client_secret': settings.OAUTH_CLIENT_SECRET,
+        'code_verifier': code_verifier
     }
     
     response = requests.post(token_url, data=data)

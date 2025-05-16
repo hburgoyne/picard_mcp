@@ -97,7 +97,7 @@ class PicardOAuthProvider(OAuthServerProvider):
             return OAuthClientInformationFull(
                 client_id=client.client_id,
                 client_secret=client.client_secret,
-                redirect_uris=[uri for uri in client.redirect_uris],
+                redirect_uris=[str(uri) for uri in client.redirect_uris],
                 scopes=client.allowed_scopes
             )
     
@@ -120,8 +120,8 @@ class PicardOAuthProvider(OAuthServerProvider):
             client = OAuthClient(
                 client_id=client_info.client_id,
                 client_secret=client_info.client_secret,
-                redirect_uris=client_info.redirect_uris,
-                allowed_scopes=client_info.scopes
+                redirect_uris=[str(uri) for uri in client_info.redirect_uris],
+                allowed_scopes=client_info.scope.split()
             )
             db.add(client)
             await db.commit()

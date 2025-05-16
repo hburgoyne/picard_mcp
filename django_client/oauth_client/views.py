@@ -63,7 +63,7 @@ def oauth_authorize(request):
     state = str(uuid.uuid4())
     request.session['oauth_state'] = state
     
-    # Build the authorization URL
+    # Build the authorization URL - use MCP_SERVER_URL for browser redirects
     auth_url = f"{settings.MCP_SERVER_URL}/auth/authorize"
     params = {
         'response_type': 'code',
@@ -91,7 +91,8 @@ def oauth_callback(request):
         return JsonResponse({'error': 'Invalid state parameter'}, status=400)
     
     # Exchange the authorization code for an access token
-    token_url = f"{settings.MCP_SERVER_URL}/auth/token"
+    # Use MCP_SERVER_INTERNAL_URL for server-to-server communication
+    token_url = f"{getattr(settings, 'MCP_SERVER_INTERNAL_URL', settings.MCP_SERVER_URL)}/auth/token"
     data = {
         'grant_type': 'authorization_code',
         'code': code,
@@ -151,7 +152,8 @@ def refresh_token(request):
         return JsonResponse({'error': 'No token found'}, status=400)
     
     # Exchange the refresh token for a new access token
-    token_url = f"{settings.MCP_SERVER_URL}/auth/token"
+    # Use MCP_SERVER_INTERNAL_URL for server-to-server communication
+    token_url = f"{getattr(settings, 'MCP_SERVER_INTERNAL_URL', settings.MCP_SERVER_URL)}/auth/token"
     data = {
         'grant_type': 'refresh_token',
         'refresh_token': token.refresh_token,

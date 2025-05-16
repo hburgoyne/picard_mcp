@@ -114,6 +114,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # OAuth2 settings
 MCP_SERVER_URL = os.getenv('MCP_SERVER_URL', 'http://localhost:8001')
+MCP_SERVER_INTERNAL_URL = os.getenv('MCP_SERVER_INTERNAL_URL', 'http://app:8000')
 OAUTH_CLIENT_ID = os.getenv('OAUTH_CLIENT_ID', 'picard_client')
 OAUTH_CLIENT_SECRET = os.getenv('OAUTH_CLIENT_SECRET', 'picard_secret')
 OAUTH_REDIRECT_URI = os.getenv('OAUTH_REDIRECT_URI', 'http://localhost:8000/oauth/callback')

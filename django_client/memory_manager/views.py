@@ -27,7 +27,9 @@ def memory_list(request):
         'Content-Type': 'application/json'
     }
     
-    response = requests.get(f"{settings.MCP_SERVER_URL}/tools/memories", headers=headers)
+    # Use MCP_SERVER_INTERNAL_URL for server-to-server communication
+    mcp_url = getattr(settings, 'MCP_SERVER_INTERNAL_URL', settings.MCP_SERVER_URL)
+    response = requests.get(f"{mcp_url}/tools/memories", headers=headers)
     
     if response.status_code == 401:
         # Token expired, redirect to refresh
@@ -70,8 +72,10 @@ def create_memory(request):
                 'is_public': is_public
             }
             
+            # Use MCP_SERVER_INTERNAL_URL for server-to-server communication
+            mcp_url = getattr(settings, 'MCP_SERVER_INTERNAL_URL', settings.MCP_SERVER_URL)
             response = requests.post(
-                f"{settings.MCP_SERVER_URL}/tools/submit_memory",
+                f"{mcp_url}/tools/submit_memory",
                 headers=headers,
                 json=data
             )
@@ -132,8 +136,10 @@ def update_memory(request, memory_id):
                 'is_public': is_public
             }
             
+            # Use MCP_SERVER_INTERNAL_URL for server-to-server communication
+            mcp_url = getattr(settings, 'MCP_SERVER_INTERNAL_URL', settings.MCP_SERVER_URL)
             response = requests.put(
-                f"{settings.MCP_SERVER_URL}/tools/update_memory",
+                f"{mcp_url}/tools/update_memory",
                 headers=headers,
                 json=data
             )
@@ -188,8 +194,10 @@ def query_user(request):
                 'prompt': prompt
             }
             
+            # Use MCP_SERVER_INTERNAL_URL for server-to-server communication
+            mcp_url = getattr(settings, 'MCP_SERVER_INTERNAL_URL', settings.MCP_SERVER_URL)
             response = requests.post(
-                f"{settings.MCP_SERVER_URL}/tools/query",
+                f"{mcp_url}/tools/query",
                 headers=headers,
                 json=data
             )

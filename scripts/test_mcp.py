@@ -25,7 +25,7 @@ async def test_oauth_flow():
         "scope": "memories:read memories:write",
         "state": "test_state"
     }
-    auth_url = f"{base_url}/auth/authorize?{urlencode(auth_params)}"
+    auth_url = f"{base_url}/oauth/authorize?{urlencode(auth_params)}"
     
     print(f"Authorization URL: {auth_url}")
     print("In a real application, the user would be redirected to this URL.")

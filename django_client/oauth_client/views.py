@@ -64,7 +64,7 @@ def oauth_authorize(request):
     request.session['oauth_state'] = state
     
     # Build the authorization URL - use MCP_SERVER_URL for browser redirects
-    auth_url = f"{settings.MCP_SERVER_URL}/auth/authorize"
+    auth_url = f"{settings.MCP_SERVER_URL}/oauth/authorize"
     params = {
         'response_type': 'code',
         'client_id': settings.OAUTH_CLIENT_ID,

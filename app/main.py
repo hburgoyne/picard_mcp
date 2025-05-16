@@ -1,29 +1,66 @@
 import os
 import sys
+import traceback
 from contextlib import asynccontextmanager
 from typing import AsyncIterator
 
-# Add debugging to see what's happening during import
+# Add detailed debugging to see what's happening during import
 print("Starting app.main import")
+print(f"Python version: {sys.version}")
+print(f"Current working directory: {os.getcwd()}")
+print(f"Environment variables: {os.environ}")
 
 # Make sure the current directory is in the Python path
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+print(f"Adding to Python path: {base_dir}")
+sys.path.insert(0, base_dir)
+print(f"Python path: {sys.path}")
 
-from fastapi import FastAPI
-
-# Try importing MCP modules with error handling
+# Import FastAPI first to isolate potential issues
 try:
-    from mcp.server.fastmcp import FastMCP, Context
-    from mcp.server.auth.settings import AuthSettings, RevocationOptions, ClientRegistrationOptions
-    print("Successfully imported MCP modules")
+    from fastapi import FastAPI
+    print("Successfully imported FastAPI")
 except ImportError as e:
-    print(f"Error importing MCP modules: {e}")
+    print(f"Error importing FastAPI: {e}")
+    traceback.print_exc()
     raise
 
-from app.config import settings
-from app.database import init_db, close_db
-from app.auth.provider import PicardOAuthProvider
-from app.models import AppContext
+# Try importing MCP modules with detailed error handling
+try:
+    print("Attempting to import MCP modules...")
+    from mcp.server.fastmcp import FastMCP, Context
+    print("Successfully imported FastMCP and Context")
+    from mcp.server.auth.settings import AuthSettings, RevocationOptions, ClientRegistrationOptions
+    print("Successfully imported all MCP modules")
+except ImportError as e:
+    print(f"Error importing MCP modules: {e}")
+    traceback.print_exc()
+    raise
+except Exception as e:
+    print(f"Unexpected error during import: {type(e).__name__}: {e}")
+    traceback.print_exc()
+    raise
+
+# Import app modules with error handling
+try:
+    print("Importing app modules...")
+    from app.config import settings
+    print("Successfully imported settings")
+    print(f"MCP_SERVER_NAME: {settings.MCP_SERVER_NAME}")
+    print(f"MCP_ISSUER_URL: {settings.MCP_ISSUER_URL}")
+    
+    from app.database import init_db, close_db
+    print("Successfully imported database functions")
+    
+    from app.auth.provider import PicardOAuthProvider
+    print("Successfully imported PicardOAuthProvider")
+    
+    from app.models import AppContext
+    print("Successfully imported all app modules")
+except Exception as e:
+    print(f"Error importing app modules: {type(e).__name__}: {e}")
+    traceback.print_exc()
+    raise
 
 # Create FastAPI app
 app = FastAPI(title="Picard MCP Server")
@@ -83,6 +120,10 @@ register_llm_endpoints(mcp)
 
 # Mount MCP server to FastAPI app
 # In the latest version of FastMCP, we need to use the streamable_http_app method
+# Mount the OAuth endpoints at /oauth
+app.mount("/oauth", mcp.streamable_http_app())
+
+# Mount the rest of the MCP server at /
 app.mount("/", mcp.streamable_http_app())
 
 # Health check endpoint

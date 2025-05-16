@@ -9,7 +9,7 @@
             margin: 0 auto;
             padding: 20px;
         }
-        h1, h2 {
+        h1, h2, h3 {
             color: #333;
         }
         button {
@@ -37,105 +37,129 @@
             border: 1px solid #ddd;
             border-radius: 4px;
         }
+        .note {
+            background-color: #fff3cd;
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+        }
+        .tabs {
+            display: flex;
+            margin-bottom: 15px;
+        }
+        .tab {
+            padding: 10px 15px;
+            cursor: pointer;
+            border: 1px solid #ddd;
+            background-color: #f8f8f8;
+            margin-right: 5px;
+            border-radius: 4px 4px 0 0;
+        }
+        .tab.active {
+            background-color: #fff;
+            border-bottom: 1px solid #fff;
+        }
+        .tab-content {
+            display: none;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 0 4px 4px 4px;
+        }
+        .tab-content.active {
+            display: block;
+        }
     </style>
 </head>
 <body>
     <h1>Picard MCP Test Client</h1>
     
-    <div class="section">
-        <h2>1. Start OAuth Flow</h2>
-        <button id="startOAuth">Start OAuth Flow</button>
-        <p>This will redirect you to the authorization page.</p>
+    <div class="note">
+        <h3>⚠️ Important Note on OAuth Flow</h3>
+        <p>This test client has been updated to reflect the new OAuth architecture:</p>
+        <ol>
+            <li>Your Django backend (http://localhost:8000) now handles the OAuth flow with the MCP server</li>
+            <li>The MCP server is running on port 8001</li>
+            <li>This client can still be used to test memory endpoints once you have an access token</li>
+        </ol>
     </div>
     
-    <div class="section">
-        <h2>2. Exchange Code for Token</h2>
-        <p>After authorization, you'll be redirected back with a code. Enter it below:</p>
-        <input type="text" id="authCode" placeholder="Authorization Code">
-        <button id="exchangeToken">Exchange for Token</button>
-        <pre id="tokenResponse"></pre>
+    <div class="tabs">
+        <div class="tab active" data-tab="django-flow">Django OAuth Flow</div>
+        <div class="tab" data-tab="direct-test">Direct API Testing</div>
     </div>
     
-    <div class="section">
-        <h2>3. Test Memory Endpoints</h2>
-        <p>Access Token: <input type="text" id="accessToken" placeholder="Access Token"></p>
-        
-        <h3>Submit Memory</h3>
-        <textarea id="memoryText" rows="3" cols="50" placeholder="Enter memory text"></textarea>
-        <button id="submitMemory">Submit Memory</button>
-        <pre id="submitResponse"></pre>
-        
-        <h3>Retrieve Memories</h3>
-        <button id="retrieveMemories">Retrieve Memories</button>
-        <pre id="retrieveResponse"></pre>
-        
-        <h3>Modify Permissions</h3>
-        <input type="text" id="memoryId" placeholder="Memory ID">
-        <select id="permission">
-            <option value="public">Public</option>
-            <option value="private">Private</option>
-        </select>
-        <button id="modifyPermissions">Modify Permissions</button>
-        <pre id="modifyResponse"></pre>
-        
-        <h3>Query User</h3>
-        <input type="text" id="userId" placeholder="User ID">
-        <textarea id="prompt" rows="3" cols="50" placeholder="Enter prompt"></textarea>
-        <button id="queryUser">Query User</button>
-        <pre id="queryResponse"></pre>
+    <div class="tab-content active" id="django-flow">
+        <div class="section">
+            <h2>Django-Managed OAuth Flow</h2>
+            <p>Your Django application will handle the OAuth flow with these steps:</p>
+            <ol>
+                <li>User logs into your Django app</li>
+                <li>Django initiates the OAuth flow by redirecting to:<br>
+                <code>http://localhost:8001/auth/authorize?response_type=code&client_id=picard_client&redirect_uri=http%3A%2F%2Flocalhost%3A8000%2Foauth%2Fcallback&scope=memories%3Aread%20memories%3Awrite&state=STATE</code></li>
+                <li>MCP server redirects back to your Django callback with a code</li>
+                <li>Django exchanges the code for a token using a server-side request</li>
+                <li>Django stores the token and uses it for API calls to the MCP server</li>
+            </ol>
+            <p>To test this flow, you need to:</p>
+            <ol>
+                <li>Ensure your Django app has implemented the OAuth client flow</li>
+                <li>Log in to your Django app</li>
+                <li>Trigger the OAuth flow from your Django app</li>
+            </ol>
+            <a href="http://localhost:8000" target="_blank"><button>Go to Django App</button></a>
+        </div>
+    </div>
+    
+    <div class="tab-content" id="direct-test">
+        <div class="section">
+            <h2>Direct API Testing</h2>
+            <p>If you already have an access token (obtained through your Django app), you can test the MCP endpoints directly:</p>
+            <p>Access Token: <input type="text" id="accessToken" placeholder="Access Token" style="width: 300px;"></p>
+            
+            <h3>Submit Memory</h3>
+            <textarea id="memoryText" rows="3" cols="50" placeholder="Enter memory text"></textarea>
+            <button id="submitMemory">Submit Memory</button>
+            <pre id="submitResponse"></pre>
+            
+            <h3>Retrieve Memories</h3>
+            <button id="retrieveMemories">Retrieve Memories</button>
+            <pre id="retrieveResponse"></pre>
+            
+            <h3>Modify Permissions</h3>
+            <input type="text" id="memoryId" placeholder="Memory ID">
+            <select id="permission">
+                <option value="public">Public</option>
+                <option value="private">Private</option>
+            </select>
+            <button id="modifyPermissions">Modify Permissions</button>
+            <pre id="modifyResponse"></pre>
+            
+            <h3>Query User</h3>
+            <input type="text" id="userId" placeholder="User ID">
+            <textarea id="prompt" rows="3" cols="50" placeholder="Enter prompt"></textarea>
+            <button id="queryUser">Query User</button>
+            <pre id="queryResponse"></pre>
+        </div>
     </div>
     
     <script>
-        const baseUrl = 'http://localhost:8000';
-        const clientId = 'picard_client';
-        const clientSecret = 'picard_secret';
-        const redirectUri = 'http://localhost:8000/oauth/callback';
+        // Updated to use the new MCP server port
+        const baseUrl = 'http://localhost:8001';
         
-        // Parse query parameters from URL
-        const urlParams = new URLSearchParams(window.location.search);
-        const code = urlParams.get('code');
-        if (code) {
-            document.getElementById('authCode').value = code;
-        }
-        
-        // Start OAuth Flow
-        document.getElementById('startOAuth').addEventListener('click', function() {
-            const authUrl = `${baseUrl}/auth/authorize?response_type=code&client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=memories:read%20memories:write&state=test_state`;
-            window.location.href = authUrl;
-        });
-        
-        // Exchange Code for Token
-        document.getElementById('exchangeToken').addEventListener('click', async function() {
-            const code = document.getElementById('authCode').value;
-            if (!code) {
-                alert('Please enter an authorization code');
-                return;
-            }
-            
-            try {
-                const response = await fetch(`${baseUrl}/auth/token`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/x-www-form-urlencoded'
-                    },
-                    body: new URLSearchParams({
-                        grant_type: 'authorization_code',
-                        code: code,
-                        redirect_uri: redirectUri,
-                        client_id: clientId,
-                        client_secret: clientSecret
-                    })
-                });
+        // Tab functionality
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.addEventListener('click', function() {
+                // Remove active class from all tabs and contents
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
                 
-                const data = await response.json();
-                document.getElementById('tokenResponse').textContent = JSON.stringify(data, null, 2);
+                // Add active class to clicked tab
+                this.classList.add('active');
                 
-                if (data.access_token) {
-                    document.getElementById('accessToken').value = data.access_token;
-                }
-            } catch (error) {
-                document.getElementById('tokenResponse').textContent = 'Error: ' + error.message;
-            }
+                // Show corresponding content
+                const tabId = this.getAttribute('data-tab');
+                document.getElementById(tabId).classList.add('active');
+            });
         });
         
         // Submit Memory

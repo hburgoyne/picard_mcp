@@ -7,10 +7,14 @@ from sqlalchemy.pool import NullPool
 
 from app.config import settings
 
-# Create async database URL
-ASYNC_DATABASE_URL = settings.DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://")
+# Create both sync and async database URLs
+DATABASE_URL = settings.DATABASE_URL
+ASYNC_DATABASE_URL = DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://")
 
-# Create engine and session
+# Create sync engine for migrations
+sync_engine = create_engine(DATABASE_URL)
+
+# Create async engine and session for application
 engine = create_async_engine(ASYNC_DATABASE_URL, poolclass=NullPool)
 SessionLocal = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 

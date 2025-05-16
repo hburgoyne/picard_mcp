@@ -2,10 +2,9 @@ from typing import List, Dict, Any, Optional
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from langchain.chains import LLMChain
-from langchain.prompts import PromptTemplate
+from langchain_core.prompts import PromptTemplate
 from langchain_openai import ChatOpenAI
-from langchain.schema import StrOutputParser
+from langchain_core.output_parsers import StrOutputParser
 
 from mcp.server.fastmcp import FastMCP, Context
 

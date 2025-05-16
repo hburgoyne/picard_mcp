@@ -11,7 +11,9 @@ from app.config import settings
 
 async def test_oauth_flow():
     """Test OAuth 2.0 Authorization Code flow"""
-    base_url = f"http://{settings.MCP_SERVER_HOST}:{settings.MCP_SERVER_PORT}"
+    # When running inside Docker, we need to use the service name as hostname
+    # rather than the MCP_SERVER_HOST which is set to 0.0.0.0
+    base_url = "http://app:8000"
     client_id = settings.OAUTH_CLIENT_ID
     redirect_uri = settings.OAUTH_REDIRECT_URI
     

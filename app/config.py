@@ -1,5 +1,6 @@
 import os
-from pydantic import BaseSettings, Field
+from pydantic import Field
+from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
     # PostgreSQL Configuration
@@ -38,6 +39,9 @@ class Settings(BaseSettings):
     JWT_SECRET_KEY: str = Field(default="supersecret")
     JWT_ALGORITHM: str = Field(default="HS256")
     JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(default=30)
+    
+    # Render Configuration
+    RENDER_EXTERNAL_URL: str = Field(default="https://your-app-name.onrender.com")
     
     class Config:
         env_file = ".env"

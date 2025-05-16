@@ -106,7 +106,8 @@ mcp = FastMCP(
             valid_scopes=["memories:read", "memories:write", "memories:admin"],
             default_scopes=["memories:read", "memories:write"],
         ),
-        required_scopes=["memories:read"],
+        # Remove required_scopes to allow any combination of valid scopes
+        required_scopes=[], 
     ),
 )
 

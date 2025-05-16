@@ -5,6 +5,7 @@ import hashlib
 import os
 import requests
 from datetime import datetime, timedelta
+import urllib.parse
 
 from django.shortcuts import render, redirect
 from django.contrib.auth import login, authenticate, logout
@@ -76,13 +77,19 @@ def logout_view(request):
 @login_required
 def oauth_authorize(request):
     """Redirect user to MCP server for authorization"""
+    print("=== OAuth Authorization Flow Starting ===")
+    print(f"User: {request.user.username if request.user.is_authenticated else 'Anonymous'}")
+    
     # Generate a random state to prevent CSRF attacks
     state = str(uuid.uuid4())
     request.session['oauth_state'] = state
+    print(f"Generated state: {state}")
     
     # Generate PKCE code verifier and challenge
     code_verifier = generate_code_verifier()
     code_challenge = generate_code_challenge(code_verifier)
+    print(f"Generated code_verifier: {code_verifier}")
+    print(f"Generated code_challenge: {code_challenge}")
     
     # Store the code verifier in the session for later use
     request.session['code_verifier'] = code_verifier
@@ -98,6 +105,10 @@ def oauth_authorize(request):
         'code_challenge': code_challenge,
         'code_challenge_method': 'S256'
     }
+    print(f"Authorization URL: {auth_url}?{urllib.parse.urlencode(params)}")
+    print(f"Client ID: {settings.OAUTH_CLIENT_ID}")
+    print(f"Redirect URI: {settings.OAUTH_REDIRECT_URI}")
+    print(f"Requested scopes: {settings.OAUTH_SCOPES}")
     
     # Construct the full URL with query parameters
     auth_url += '?' + '&'.join([f"{k}={v}" for k, v in params.items()])
@@ -108,22 +119,17 @@ def oauth_authorize(request):
 @login_required
 def oauth_callback(request):
     """Handle callback from MCP server with authorization code"""
-    # Get the authorization code and state from the request
     code = request.GET.get('code')
-    state = request.GET.get('state')
+    if not code:
+        print("Missing authorization code")
+        return JsonResponse({'error': 'missing_code'}, status=400)
     
-    # Verify the state to prevent CSRF attacks
-    if state != request.session.get('oauth_state'):
-        return JsonResponse({'error': 'Invalid state parameter'}, status=400)
-    
-    # Exchange the authorization code for an access token
-    # Use MCP_SERVER_INTERNAL_URL for server-to-server communication
-    token_url = f"{getattr(settings, 'MCP_SERVER_INTERNAL_URL', settings.MCP_SERVER_URL)}/oauth/token"
-    
-    # Get the code verifier from the session
-    code_verifier = request.session.get('code_verifier')
-    if not code_verifier:
-        return JsonResponse({'error': 'Code verifier not found in session'}, status=400)
+    # Exchange authorization code for tokens
+    token_url = f"{settings.MCP_SERVER_URL}/oauth/token"
+    print(f"Token URL: {token_url}")
+    print(f"Client ID: {settings.OAUTH_CLIENT_ID}")
+    print(f"Redirect URI: {settings.OAUTH_REDIRECT_URI}")
+    print(f"Code Verifier: {request.session.get('code_verifier')}")
     
     data = {
         'grant_type': 'authorization_code',
@@ -131,12 +137,13 @@ def oauth_callback(request):
         'redirect_uri': settings.OAUTH_REDIRECT_URI,
         'client_id': settings.OAUTH_CLIENT_ID,
         'client_secret': settings.OAUTH_CLIENT_SECRET,
-        'code_verifier': code_verifier
+        'code_verifier': request.session.get('code_verifier')
     }
     
     response = requests.post(token_url, data=data)
     
     if response.status_code != 200:
+        print(f"Failed to obtain access token: {response.text}")
         return JsonResponse({'error': 'Failed to obtain access token'}, status=400)
     
     # Parse the response

@@ -84,6 +84,7 @@ class PicardOAuthProvider(OAuthServerProvider):
     
     async def get_client(self, client_id: str) -> OAuthClientInformationFull | None:
         """Retrieves client information by client ID"""
+        print(f"=== Looking up client: {client_id} ===")
         async for db in get_db():
             # Find the client
             client_result = await db.execute(
@@ -92,7 +93,12 @@ class PicardOAuthProvider(OAuthServerProvider):
             client = client_result.scalars().first()
             
             if not client:
+                print(f"Client not found: {client_id}")
                 return None
+            
+            print(f"Found client: {client.client_id}")
+            print(f"Client redirect URIs: {client.redirect_uris}")
+            print(f"Client allowed scopes: {client.allowed_scopes}")
             
             return OAuthClientInformationFull(
                 client_id=client.client_id,
@@ -128,12 +134,38 @@ class PicardOAuthProvider(OAuthServerProvider):
     
     async def authorize(self, client: OAuthClientInformationFull, params: AuthorizationParams) -> str:
         """Handle authorization request"""
+        print("=== Authorization Request Received ===")
+        print(f"Client ID: {client.client_id}")
+        print(f"Redirect URI: {params.redirect_uri}")
+        print(f"Requested Scope: {params.scope}")
+        print(f"State: {params.state}")
+        
         # Validate redirect URI
         if not params.redirect_uri:
             raise AuthorizeError(
                 error="invalid_request",
                 error_description="Missing redirect_uri"
             )
+        
+        # Validate scopes
+        if params.scope:
+            # Normalize scopes by splitting and rejoining to ensure consistent format
+            requested_scopes = set(params.scope.split())
+            allowed_scopes = set(client.scopes)  # Use client.scopes from OAuthClientInformationFull
+            
+            print(f"Requested scopes: {requested_scopes}")
+            print(f"Allowed scopes: {allowed_scopes}")
+            print(f"Client scopes from OAuthClientInformationFull: {client.scopes}")
+            
+            # Check if all requested scopes are allowed
+            invalid_scopes = requested_scopes - allowed_scopes
+            if invalid_scopes:
+                print(f"Invalid scopes detected: {invalid_scopes}")
+                raise AuthorizeError(
+                    error="invalid_scope",
+                    error_description=f"Client was not registered with scope {', '.join(invalid_scopes)}"
+                )
+            print("All requested scopes are valid.")
         
         print(f"params.redirect_uri = {params.redirect_uri}")
         
@@ -375,7 +407,15 @@ class PicardOAuthProvider(OAuthServerProvider):
     
     async def token(self, request: TokenRequest) -> TokenResponse:
         """Handle token request"""
-        async for db in get_db():
+        print("=== Token Request Received ===")
+        print(f"Grant type: {request.grant_type}")
+        print(f"Client ID: {request.client_id}")
+        print(f"Redirect URI: {request.redirect_uri}")
+        print(f"Code: {request.code}")
+        print(f"Refresh token: {request.refresh_token}")
+        print(f"Requested scope: {request.scope}")
+        
+        try:
             if request.grant_type == "authorization_code":
                 # Load authorization code
                 authorization_code = await self.load_authorization_code(
@@ -389,6 +429,7 @@ class PicardOAuthProvider(OAuthServerProvider):
                 )
                 
                 if not authorization_code:
+                    print("Invalid authorization code")
                     return TokenResponse(
                         error="invalid_grant",
                         error_description="Invalid authorization code"
@@ -396,7 +437,8 @@ class PicardOAuthProvider(OAuthServerProvider):
                 
                 # Exchange authorization code for tokens
                 try:
-                    return await self.exchange_authorization_code(
+                    print("Exchanging authorization code for tokens...")
+                    tokens = await self.exchange_authorization_code(
                         client=OAuthClientInformationFull(
                             client_id=request.client_id,
                             client_secret=request.client_secret,
@@ -405,7 +447,10 @@ class PicardOAuthProvider(OAuthServerProvider):
                         ),
                         authorization_code=authorization_code
                     )
+                    print(f"Successfully exchanged code for tokens: {tokens}")
+                    return tokens
                 except TokenError as e:
+                    print(f"Error exchanging authorization code: {e}")
                     return TokenResponse(
                         error=e.error,
                         error_description=e.error_description
@@ -424,6 +469,7 @@ class PicardOAuthProvider(OAuthServerProvider):
                 )
                 
                 if not refresh_token:
+                    print("Invalid refresh token")
                     return TokenResponse(
                         error="invalid_grant",
                         error_description="Invalid refresh token"
@@ -432,7 +478,8 @@ class PicardOAuthProvider(OAuthServerProvider):
                 # Exchange refresh token for tokens
                 try:
                     scopes = request.scope.split() if request.scope else None
-                    return await self.exchange_refresh_token(
+                    print("Exchanging refresh token for tokens...")
+                    tokens = await self.exchange_refresh_token(
                         client=OAuthClientInformationFull(
                             client_id=request.client_id,
                             client_secret=request.client_secret,
@@ -442,17 +489,27 @@ class PicardOAuthProvider(OAuthServerProvider):
                         refresh_token=refresh_token,
                         scopes=scopes
                     )
+                    print(f"Successfully exchanged refresh token for tokens: {tokens}")
+                    return tokens
                 except TokenError as e:
+                    print(f"Error exchanging refresh token: {e}")
                     return TokenResponse(
                         error=e.error,
                         error_description=e.error_description
                     )
             
             else:
+                print(f"Unsupported grant type: {request.grant_type}")
                 return TokenResponse(
                     error="unsupported_grant_type",
                     error_description="Unsupported grant type"
                 )
+        except Exception as e:
+            print(f"Error in token: {str(e)}")
+            return TokenResponse(
+                error="server_error",
+                error_description=str(e)
+            )
     
     async def load_access_token(self, token: str) -> AccessToken | None:
         """Loads an access token by its token"""

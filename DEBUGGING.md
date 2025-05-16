@@ -2,68 +2,98 @@
 
 This guide provides detailed steps and information for debugging OAuth issues in the Picard MCP server implementation.
 
-## Current Issue: Scope Validation Error
+## Resolved Issues
 
-### Error Details
-When attempting to connect the Django client to the MCP server, we encounter an "invalid_scope" error despite the client being registered with the correct scopes.
+1. **Scope Validation Error**
+   - Fixed scope handling between string and list formats
+   - Added proper scope conversion in token response
+   - Resolved undefined variable errors
 
-#### Error Message
+2. **Token Response Format**
+   - Fixed token response structure to match MCP server expectations
+   - Added proper error handling for token responses
+   - Resolved Pydantic validation issues with scope handling
+
+## Current Issues
+
+### 1. AccessToken Validation Error
+
+#### Error Details
 ```
-error=invalid_scope&error_description=Client+was+not+registered+with+scope+memories%3Aread
-```
-
-### Debugging Steps Taken
-
-1. **Database Verification**
-   - Confirmed client registration in database with scopes: `['memories:read', 'memories:write', 'memories:admin']`
-   - Verified client ID and redirect URI match configuration
-
-2. **Code Path Analysis**
-   - Added extensive logging in `authorize` method of `PicardOAuthProvider`
-   - Modified scope validation logic to be more lenient
-   - Added checks for different scope attribute names
-
-3. **Current Debugging Code**
-```python
-# In app/auth/provider.py
-async def authorize(self, client: OAuthClientInformationFull, params: AuthorizationParams) -> str:
-    print("=== Authorization Request Received ===")
-    print(f"Client ID: {client.client_id}")
-    print(f"Redirect URI: {params.redirect_uri}")
-    print(f"Requested Scope: {params.scope}")
-    print(f"Requested Scopes (parsed): {params.scopes if hasattr(params, 'scopes') else 'No scopes attribute'}")
-    print(f"State: {params.state}")
-    print(f"Client object type: {type(client)}")
-    print(f"Client dir: {dir(client)}")
-    print(f"Client scopes: {client.scopes if hasattr(client, 'scopes') else 'No scopes attribute'}")
-    print(f"Client allowed_scopes: {client.allowed_scopes if hasattr(client, 'allowed_scopes') else 'No allowed_scopes attribute'}")
+ValidationError: 1 validation error for AccessToken
+client_id
+  Input should be a valid string [type=string_type, input_value=1, input_type=int]
 ```
 
-### Next Debugging Steps
+#### Error Context
+- Occurs when accessing protected endpoints like `/tools/memories` and `/tools/submit_memory`
+- Happens during token validation in authentication middleware
+- The client_id is being passed as an integer when it should be a string
 
-1. **Add More Detailed Logging**
-   - Add logging in the MCP server's OAuth provider initialization
-   - Log the exact scope comparison logic
-   - Track scope transformation at each step
+#### Next Debugging Steps
+1. **Check Token Decoding Logic**
+   - Verify how JWT tokens are decoded in `load_access_token`
+   - Add logging to track client_id type during token validation
+   - Ensure client_id is properly converted to string before creating AccessToken
 
-2. **Check Configuration**
-   - Verify `AuthSettings` configuration in `main.py`
-   - Check scope validation in `OAuthAuthorizationServerProvider`
-   - Confirm scope parsing in request handling
+2. **Review AccessToken Model**
+   - Confirm client_id field type in AccessToken model
+   - Check for type conversion issues
+   - Add validation for client_id format
 
-3. **Test with Different Scopes**
-   - Try with single scope: `memories:read`
-   - Test with different scope combinations
-   - Verify scope order matters
+3. **Test Token Structure**
+   - Verify token payload structure
+   - Check if client_id is being encoded correctly
+   - Test with different client_id formats
 
-4. **Debug Client Request**
-   - Add logging in Django client's OAuth flow
-   - Verify exact scope string being sent
-   - Check encoding of scope parameter
+### 2. Authentication Flow
+
+#### Working Components
+1. **OAuth Flow**
+   - Client registration working
+   - Authorization code exchange successful
+   - Token exchange with proper scope handling
+   - PKCE implementation verified
+
+2. **Scope Handling**
+   - Scope validation working
+   - Proper scope conversion between string and list
+   - Correct scope comparison logic
+
+#### Next Focus Areas
+1. **Token Validation**
+   - Fix client_id type conversion
+   - Ensure consistent token payload structure
+   - Add proper error handling for token validation
+
+2. **API Endpoints**
+   - Test protected endpoints with valid tokens
+   - Verify scope requirements for each endpoint
+   - Add proper error responses for invalid tokens
 
 ### Debugging Commands
 
-1. **Check Client Registration**
+1. **Check Token Structure**
+```bash
+docker-compose exec app python -c "
+from app.auth.provider import PicardOAuthProvider
+import asyncio
+
+async def test_token_validation():
+    provider = PicardOAuthProvider()
+    try:
+        # Add your test token here
+        token = 'your_test_token'
+        auth_info = await provider.load_access_token(token)
+        print(f'Authentication Info: {auth_info}')
+    except Exception as e:
+        print(f'Error: {str(e)}')
+
+asyncio.run(test_token_validation())
+"
+```
+
+2. **Check Client Information**
 ```bash
 docker-compose exec app python -c "
 from app.models.oauth import OAuthClient
@@ -76,78 +106,29 @@ async def check_client():
         clients = result.scalars().all()
         for client in clients:
             print(f'Client ID: {client.client_id}')
+            print(f'Client Type: {type(client.client_id)}')
             print(f'Scopes: {client.allowed_scopes}')
-            print(f'Redirect URIs: {client.redirect_uris}')
 
 asyncio.run(check_client())
 "
 ```
 
-2. **Test Authorization Flow**
-```bash
-docker-compose exec app python -c "
-from app.auth.provider import PicardOAuthProvider
-from app.models.oauth import OAuthClientInformationFull, AuthorizationParams
-import asyncio
+## Debugging Strategy
 
-async def test_authorize():
-    provider = PicardOAuthProvider()
-    client = OAuthClientInformationFull(
-        client_id="picard_client",
-        client_secret="picard_secret",
-        redirect_uris=["http://localhost:8000/oauth/callback"],
-        scopes=["memories:read", "memories:write"]
-    )
-    params = AuthorizationParams(
-        redirect_uri="http://localhost:8000/oauth/callback",
-        scope="memories:read memories:write",
-        state="test_state",
-        code_challenge="test_challenge",
-        code_challenge_method="S256"
-    )
-    try:
-        result = await provider.authorize(client, params)
-        print(f"Authorization successful: {result}")
-    except Exception as e:
-        print(f"Error: {str(e)}")
+1. **Focus on Token Validation**
+   - Prioritize fixing the AccessToken validation error
+   - Add detailed logging in token validation flow
+   - Verify token payload structure
 
-asyncio.run(test_authorize())
-"
-```
+2. **Test Protected Endpoints**
+   - Test each protected endpoint with valid tokens
+   - Verify scope requirements
+   - Add proper error handling
 
-### Known Working Points
-
-1. **Client Registration**
-   - Successfully registers with MCP server
-   - Correct client ID and secret stored
-   - Redirect URI matches configuration
-
-2. **Database Storage**
-   - Client information stored correctly
-   - Scopes properly saved in database
-   - Redirect URIs validated
-
-3. **Basic OAuth Flow**
-   - Authorization endpoint accessible
-   - Redirects working
-   - State parameter preserved
-
-### Next Investigation Areas
-
-1. **Scope Comparison Logic**
-   - Investigate how scopes are compared in `OAuthAuthorizationServerProvider`
-   - Check for case sensitivity issues
-   - Verify scope parsing in request handling
-
-2. **Client Object Handling**
-   - Track how `OAuthClientInformationFull` is created
-   - Verify scope attribute access
-   - Check for attribute name mismatches
-
-3. **Configuration Validation**
-   - Review `AuthSettings` in `main.py`
-   - Verify scope validation rules
-   - Check for conflicting configurations
+3. **Maintain Working Components**
+   - Keep OAuth flow working
+   - Maintain scope validation
+   - Preserve PKCE implementation
 
 ## Additional Resources
 

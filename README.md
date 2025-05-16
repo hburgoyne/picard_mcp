@@ -4,7 +4,91 @@ A Model Context Protocol (MCP) server that provides memory storage and retrieval
 
 ## Overview
 
-This is a Model Context Protocol (MCP) server that provides memory storage and retrieval for authenticated users. It uses FastAPI, PostgreSQL with pgvector for vector storage, and OAuth 2.0 for authentication. The repository also includes a Django client application that demonstrates how to integrate with the MCP server.
+This is a Model Context Protocol (MCP) server that provides memory storage and retrieval for authenticated users. It uses FastAPI, PostgreSQL with pgvector for vector storage, and OAuth 2.0 for authentication. The repository includes both the MCP server and a Django client application that demonstrates how to integrate with the MCP server.
+
+## Architecture
+
+### OAuth 2.0 Implementation Details
+
+The OAuth 2.0 implementation uses the Authorization Code flow with PKCE (Proof Key for Code Exchange) for enhanced security. The flow works as follows:
+
+1. **Client Registration**:
+   - The Django client registers with the MCP server using the OAuth client registration endpoint
+   - The registration includes:
+     - Client ID: `picard_client`
+     - Client Secret: `picard_secret`
+     - Redirect URI: `http://localhost:8000/oauth/callback`
+     - Scopes: `memories:read memories:write memories:admin`
+
+2. **Authorization Flow**:
+   - The client initiates authorization by redirecting to `/oauth/authorize` with parameters:
+     - `response_type=code`
+     - `client_id=picard_client`
+     - `redirect_uri=http://localhost:8000/oauth/callback`
+     - `scope=memories:read memories:write`
+     - `state` (a random UUID for CSRF protection)
+     - `code_challenge` and `code_challenge_method=S256` (PKCE parameters)
+
+3. **Token Exchange**:
+   - After authorization, the client exchanges the authorization code for tokens at `/oauth/token`
+   - The request includes:
+     - `grant_type=authorization_code`
+     - `code` (the authorization code)
+     - `redirect_uri`
+     - `client_id`
+     - `client_secret`
+     - `code_verifier` (matches the code_challenge from authorization)
+
+### Memory Storage and Retrieval
+
+The MCP server provides endpoints for:
+- Submitting memories
+- Retrieving memories
+- Modifying memory permissions
+- Querying users based on their memories
+
+## Current Implementation Status
+
+### Working Features
+
+- OAuth client registration with MCP server
+- PKCE support for enhanced security
+- Memory storage and retrieval endpoints
+- Vector embedding of memories for semantic search
+- User authentication and authorization
+
+### Known Issues and Debugging Status
+
+1. **Scope Validation Issue**
+   - The OAuth flow is failing with an "invalid_scope" error despite the client being registered with the correct scopes
+   - Error message: `error=invalid_scope&error_description=Client+was+not+registered+with+scope+memories%3Aread`
+   - Debugging shows:
+     - Client is registered with scopes: `['memories:read', 'memories:write', 'memories:admin']`
+     - Requested scopes: `memories:read memories:write`
+   - Current debugging attempts:
+     - Added detailed logging to track scope validation
+     - Modified scope validation logic to be more lenient
+     - Verified database client registration
+
+2. **Debugging Steps Taken**
+   - Added extensive logging to the authorization flow
+   - Verified client registration in the database
+   - Modified scope validation logic
+   - Added error handling and logging
+
+3. **Next Debugging Steps**
+   - Investigate how scopes are being passed through the OAuth flow
+   - Verify scope parsing and comparison logic
+   - Add more detailed logging at each step of the authorization process
+
+## Features
+
+- OAuth 2.0 Authentication (Authorization Code flow with PKCE)
+- Memory storage and retrieval
+- Memory permission management (public/private)
+- Vector embedding of memories for semantic search
+- LLM integration for querying user personas
+- Django client application for OAuth integration
 
 ## Architecture
 

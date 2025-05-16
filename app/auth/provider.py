@@ -138,7 +138,12 @@ class PicardOAuthProvider(OAuthServerProvider):
         print(f"Client ID: {client.client_id}")
         print(f"Redirect URI: {params.redirect_uri}")
         print(f"Requested Scope: {params.scope}")
+        print(f"Requested Scopes (parsed): {params.scopes if hasattr(params, 'scopes') else 'No scopes attribute'}")
         print(f"State: {params.state}")
+        print(f"Client object type: {type(client)}")
+        print(f"Client dir: {dir(client)}")
+        print(f"Client scopes: {client.scopes if hasattr(client, 'scopes') else 'No scopes attribute'}")
+        print(f"Client allowed_scopes: {client.allowed_scopes if hasattr(client, 'allowed_scopes') else 'No allowed_scopes attribute'}")
         
         # Validate redirect URI
         if not params.redirect_uri:
@@ -151,11 +156,18 @@ class PicardOAuthProvider(OAuthServerProvider):
         if params.scope:
             # Normalize scopes by splitting and rejoining to ensure consistent format
             requested_scopes = set(params.scope.split())
-            allowed_scopes = set(client.scopes)  # Use client.scopes from OAuthClientInformationFull
             
-            print(f"Requested scopes: {requested_scopes}")
-            print(f"Allowed scopes: {allowed_scopes}")
-            print(f"Client scopes from OAuthClientInformationFull: {client.scopes}")
+            # Try to get scopes from different possible attributes
+            client_scopes = []
+            if hasattr(client, 'scopes'):
+                client_scopes = client.scopes
+            elif hasattr(client, 'allowed_scopes'):
+                client_scopes = client.allowed_scopes
+            
+            allowed_scopes = set(client_scopes)
+            
+            print(f"Requested scopes (normalized): {requested_scopes}")
+            print(f"Allowed scopes (normalized): {allowed_scopes}")
             
             # Check if all requested scopes are allowed
             invalid_scopes = requested_scopes - allowed_scopes

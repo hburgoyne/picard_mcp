@@ -138,7 +138,7 @@ def register_memory_endpoints(mcp: FastMCP):
         return memory.to_dict()
     
     @mcp.resource("memories://{user_id}/public")
-    async def get_public_memories(user_id: int, ctx: Context) -> List[Dict[str, Any]]:
+    async def get_public_memories(user_id: int) -> List[Dict[str, Any]]:
         """
         Get public memories for a specific user.
         
@@ -148,17 +148,20 @@ def register_memory_endpoints(mcp: FastMCP):
         Returns:
             List of dictionaries with memory information
         """
-        # Get database session from context
-        db = ctx.request_context.lifespan_context.db
-        
-        # Find public memories in database
-        memories_result = await db.execute(
-            select(Memory).where(
-                (Memory.user_id == user_id) & 
-                (Memory.permission == MemoryPermission.PUBLIC.value)
+        # Get database session
+        from app.database import get_db
+        async for db in get_db():
+            # Find public memories in database
+            memories_result = await db.execute(
+                select(Memory).where(
+                    (Memory.user_id == user_id) & 
+                    (Memory.permission == MemoryPermission.PUBLIC.value)
+                )
             )
-        )
-        memories = memories_result.scalars().all()
+            memories = memories_result.scalars().all()
+            
+            # Return public memories
+            return [memory.to_dict() for memory in memories]
         
-        # Return public memories
-        return [memory.to_dict() for memory in memories]
+        # If we couldn't get a database session
+        return []

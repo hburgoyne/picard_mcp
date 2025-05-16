@@ -28,6 +28,20 @@ from app.models import AppContext
 # Create FastAPI app
 app = FastAPI(title="Picard MCP Server")
 
+# Add middleware to catch and log exceptions
+@app.middleware("http")
+async def catch_all_exceptions(request, call_next):
+    try:
+        return await call_next(request)
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        from fastapi.responses import JSONResponse
+        return JSONResponse(
+            status_code=500,
+            content={"error": str(e)}
+        )
+
 # Create MCP server with OAuth2 authentication
 @asynccontextmanager
 async def app_lifespan(server: FastMCP) -> AsyncIterator[AppContext]:
@@ -68,7 +82,8 @@ register_memory_endpoints(mcp)
 register_llm_endpoints(mcp)
 
 # Mount MCP server to FastAPI app
-app.mount("/", mcp.app)
+# In the latest version of FastMCP, the server itself is an ASGI app
+app.mount("/", mcp)
 
 # Health check endpoint
 @app.get("/health")

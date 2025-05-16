@@ -128,48 +128,75 @@ class PicardOAuthProvider(OAuthServerProvider):
     
     async def authorize(self, client: OAuthClientInformationFull, params: AuthorizationParams) -> str:
         """Handle authorization request"""
+        # Validate redirect URI
+        if not params.redirect_uri:
+            raise AuthorizeError(
+                error="invalid_request",
+                error_description="Missing redirect_uri"
+            )
+        
+        print(f"params.redirect_uri = {params.redirect_uri}")
+        
         # In a real implementation, this would redirect to a login page
         # For MVP, we'll auto-authorize the first user
-        async for db in get_db():
-            # Find or create a user (for MVP)
-            user_result = await db.execute(select(User).limit(1))
-            user = user_result.scalars().first()
-            
-            if not user:
-                # Create a default user for testing
-                user = User(
-                    username="test_user",
-                    email="test@example.com",
-                    hashed_password="hashed_password"  # In production, use proper hashing
-                )
-                db.add(user)
-                await db.commit()
-                await db.refresh(user)
-            
-            # Generate authorization code
-            auth_code = jwt.encode(
-                {
-                    "sub": str(user.id),
-                    "client_id": client.client_id,
-                    "scopes": params.scopes,
-                    "redirect_uri": str(params.redirect_uri),
-                    "code_challenge": params.code_challenge,
-                    "exp": datetime.utcnow() + timedelta(minutes=10)
-                },
-                settings.JWT_SECRET_KEY,
-                algorithm=settings.JWT_ALGORITHM
-            )
-            
-            # Store the authorization code
-            # In a real implementation, you would store this in the database
-            
-            # Return redirect URI with code
-            redirect_params = {"code": auth_code}
-            if params.state:
-                redirect_params["state"] = params.state
+        try:
+            async for db in get_db():
+                # Find or create a user (for MVP)
+                user_result = await db.execute(select(User).limit(1))
+                user = user_result.scalars().first()
                 
-            from mcp.server.auth.provider import construct_redirect_uri
-            return construct_redirect_uri(str(params.redirect_uri), **redirect_params)
+                if not user:
+                    # Create a default user for testing
+                    user = User(
+                        username="test_user",
+                        email="test@example.com",
+                        hashed_password="hashed_password"  # In production, use proper hashing
+                    )
+                    db.add(user)
+                    await db.commit()
+                    await db.refresh(user)
+                
+                # Generate authorization code with proper integer timestamp for exp
+                auth_code = jwt.encode(
+                    {
+                        "sub": str(user.id),
+                        "client_id": client.client_id,
+                        "scopes": params.scopes,
+                        "redirect_uri": str(params.redirect_uri),
+                        "code_challenge": params.code_challenge,
+                        "exp": int((datetime.utcnow() + timedelta(minutes=10)).timestamp())
+                    },
+                    settings.JWT_SECRET_KEY,
+                    algorithm=settings.JWT_ALGORITHM
+                )
+                
+                # Store the authorization code
+                # In a real implementation, you would store this in the database
+                
+                # Return redirect URI with code
+                redirect_params = {"code": auth_code}
+                if params.state:
+                    redirect_params["state"] = params.state
+                    
+                from mcp.server.auth.provider import construct_redirect_uri
+                try:
+                    redirect_uri = construct_redirect_uri(str(params.redirect_uri), **redirect_params)
+                    print("Redirecting to:", redirect_uri)
+                    return redirect_uri
+                except Exception as e:
+                    print("Error constructing redirect URI:", e)
+                    raise AuthorizeError(
+                        error="server_error",
+                        error_description="Failed to construct redirect URI"
+                    )
+        except Exception as e:
+            print(f"Error in authorize: {e}")
+            import traceback
+            traceback.print_exc()
+            raise AuthorizeError(
+                error="server_error",
+                error_description=f"Server error: {str(e)}"
+            )
     
     async def load_authorization_code(self, client: OAuthClientInformationFull, authorization_code: str) -> AuthorizationCode | None:
         """Loads an AuthorizationCode by its code"""
@@ -226,7 +253,7 @@ class PicardOAuthProvider(OAuthServerProvider):
                     "sub": user_id,
                     "client_id": client.client_id,
                     "scopes": authorization_code.scopes,
-                    "exp": int(access_token_expires.timestamp())
+                    "exp": int(access_token_expires.timestamp())  # Ensure exp is an integer timestamp
                 }
                 access_token = jwt.encode(
                     access_token_payload,
@@ -240,7 +267,7 @@ class PicardOAuthProvider(OAuthServerProvider):
                     "sub": user_id,
                     "client_id": client.client_id,
                     "scopes": authorization_code.scopes,
-                    "exp": int(refresh_token_expires.timestamp())
+                    "exp": int(refresh_token_expires.timestamp())  # Ensure exp is an integer timestamp
                 }
                 refresh_token = jwt.encode(
                     refresh_token_payload,
@@ -324,7 +351,7 @@ class PicardOAuthProvider(OAuthServerProvider):
                 "sub": str(token.user_id),
                 "client_id": token.client_id,
                 "scopes": scopes or token.scopes,
-                "exp": int(access_token_expires.timestamp())
+                "exp": int(access_token_expires.timestamp())  # Ensure exp is an integer timestamp
             }
             access_token = jwt.encode(
                 access_token_payload,

@@ -1,10 +1,24 @@
 import os
+import sys
 from contextlib import asynccontextmanager
 from typing import AsyncIterator
 
+# Add debugging to see what's happening during import
+print("Starting app.main import")
+
+# Make sure the current directory is in the Python path
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from fastapi import FastAPI
-from mcp.server.fastmcp import FastMCP, Context
-from mcp.server.auth import AuthSettings, RevocationOptions, ClientRegistrationOptions
+
+# Try importing MCP modules with error handling
+try:
+    from mcp.server.fastmcp import FastMCP, Context
+    from mcp.server.auth.settings import AuthSettings, RevocationOptions, ClientRegistrationOptions
+    print("Successfully imported MCP modules")
+except ImportError as e:
+    print(f"Error importing MCP modules: {e}")
+    raise
 
 from app.config import settings
 from app.database import init_db, close_db

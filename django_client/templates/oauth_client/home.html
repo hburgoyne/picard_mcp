@@ -1,0 +1,51 @@
+{% extends 'base.html' %}
+
+{% block title %}Home - Picard MCP Client{% endblock %}
+
+{% block content %}
+<div class="jumbotron">
+    <h1 class="display-4">Welcome to Picard MCP Client</h1>
+    <p class="lead">This application allows you to interact with the Picard MCP server to manage your memories.</p>
+    <hr class="my-4">
+    {% if user.is_authenticated %}
+        <p>You are logged in as {{ user.username }}.</p>
+        <div class="d-grid gap-2 d-md-flex justify-content-md-start">
+            <a href="{% url 'dashboard' %}" class="btn btn-primary me-md-2">Go to Dashboard</a>
+            <a href="{% url 'memory_list' %}" class="btn btn-success">View Memories</a>
+        </div>
+    {% else %}
+        <p>Please log in or register to continue.</p>
+        <div class="d-grid gap-2 d-md-flex justify-content-md-start">
+            <a href="{% url 'login' %}" class="btn btn-primary me-md-2">Login</a>
+            <a href="{% url 'register' %}" class="btn btn-success">Register</a>
+        </div>
+    {% endif %}
+</div>
+
+<div class="row mt-5">
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Store Memories</h5>
+                <p class="card-text">Create and store your personal memories securely in the MCP server.</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Manage Privacy</h5>
+                <p class="card-text">Control which memories are public and which are private.</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Query Your Memories</h5>
+                <p class="card-text">Ask questions about your memories and get intelligent responses.</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

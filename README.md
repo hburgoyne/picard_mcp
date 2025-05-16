@@ -4,7 +4,7 @@ A Model Context Protocol (MCP) server that provides memory storage and retrieval
 
 ## Overview
 
-This is a Model Context Protocol (MCP) server that provides memory storage and retrieval for authenticated users. It uses FastAPI, PostgreSQL with pgvector for vector storage, and OAuth 2.0 for authentication.
+This is a Model Context Protocol (MCP) server that provides memory storage and retrieval for authenticated users. It uses FastAPI, PostgreSQL with pgvector for vector storage, and OAuth 2.0 for authentication. The repository also includes a Django client application that demonstrates how to integrate with the MCP server.
 
 ## Architecture
 
@@ -33,6 +33,7 @@ The MCP server provides endpoints for:
 - Memory permission management (public/private)
 - Vector embedding of memories for semantic search
 - LLM integration for querying user personas
+- Django client application for OAuth integration
 
 ## Setup
 
@@ -78,14 +79,16 @@ OPENAI_API_KEY=your_openai_api_key
 
 ### Testing with Django Backend
 
-The MCP server is designed to work with a Django backend that handles the OAuth flow. To test this integration:
+The repository includes a Django client application that demonstrates the OAuth flow with the MCP server. To use it:
 
-1. Ensure your Django application is running at http://localhost:8000
-2. Implement the OAuth client flow in your Django application:
-   - Redirect users to `http://localhost:8001/auth/authorize` with appropriate parameters
-   - Handle the callback at `http://localhost:8000/oauth/callback`
-   - Exchange the authorization code for an access token
-   - Use the access token to make authenticated requests to the MCP server
+1. The Django application will run at http://localhost:8000 when using docker-compose
+2. The Django app implements the complete OAuth client flow:
+   - User registration and login
+   - OAuth authorization with the MCP server
+   - Token exchange and management
+   - Memory creation, retrieval, and querying
+
+See the [Django Client README](django_client/README.md) for more details on the Django application.
 
 ### Direct API Testing
 
@@ -111,7 +114,8 @@ If you already have an access token (obtained through your Django app), you can 
 1. Clone the repository
 2. Copy `.env.example` to `.env` and fill in the required values
 3. Run `docker-compose up`
-4. Access the MCP server at http://localhost:8000
+4. Access the MCP server at http://localhost:8001
+5. Access the Django client at http://localhost:8000
 
 ## Deployment
 

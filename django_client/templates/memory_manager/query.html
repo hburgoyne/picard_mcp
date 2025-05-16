@@ -1,0 +1,61 @@
+{% extends 'base.html' %}
+
+{% block title %}Query Memories - Picard MCP Client{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">Query Your Memories</h3>
+            </div>
+            <div class="card-body">
+                {% if error %}
+                <div class="alert alert-danger">
+                    {{ error }}
+                </div>
+                {% endif %}
+                
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label for="id_prompt" class="form-label">{{ form.prompt.label }}</label>
+                        {{ form.prompt }}
+                        {% if form.prompt.errors %}
+                        <div class="invalid-feedback d-block">
+                            {{ form.prompt.errors }}
+                        </div>
+                        {% endif %}
+                    </div>
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary">Submit Query</button>
+                    </div>
+                </form>
+                
+                {% if response %}
+                <div class="mt-4">
+                    <h4>Response:</h4>
+                    <div class="card">
+                        <div class="card-body">
+                            <p>{{ response.response }}</p>
+                        </div>
+                    </div>
+                    
+                    {% if response.memories %}
+                    <h5 class="mt-3">Referenced Memories:</h5>
+                    <div class="list-group">
+                        {% for memory in response.memories %}
+                        <div class="list-group-item">
+                            <p>{{ memory.text }}</p>
+                            <small class="text-muted">Memory ID: {{ memory.id }}</small>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

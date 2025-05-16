@@ -91,21 +91,20 @@
     <div class="tab-content active" id="django-flow">
         <div class="section">
             <h2>Django-Managed OAuth Flow</h2>
-            <p>Your Django application will handle the OAuth flow with these steps:</p>
+            <p>OAuth Flow:</p>
             <ol>
-                <li>User logs into your Django app</li>
-                <li>Django initiates the OAuth flow by redirecting to:<br>
-                <code>http://localhost:8001/auth/authorize?response_type=code&client_id=picard_client&redirect_uri=http%3A%2F%2Flocalhost%3A8000%2Foauth%2Fcallback&scope=memories%3Aread%20memories%3Awrite&state=STATE</code></li>
-                <li>MCP server redirects back to your Django callback with a code</li>
-                <li>Django exchanges the code for a token using a server-side request</li>
-                <li>Django stores the token and uses it for API calls to the MCP server</li>
+                <li>Start by going to your Django app running on port 8000</li>
+                <li>When you need to authenticate, your Django app will redirect to the MCP server's authorization endpoint</li>
+                <li>The MCP server will then redirect back to your Django app with an authorization code</li>
+                <li>Your Django app will exchange this code for an access token</li>
+                <li>Once you have the access token, you can use it in this test client to make API calls</li>
             </ol>
-            <p>To test this flow, you need to:</p>
-            <ol>
-                <li>Ensure your Django app has implemented the OAuth client flow</li>
-                <li>Log in to your Django app</li>
-                <li>Trigger the OAuth flow from your Django app</li>
-            </ol>
+            <p>Important Notes:</p>
+            <ul>
+                <li>This test client should NOT be used to initiate the OAuth flow directly</li>
+                <li>The OAuth flow should be handled entirely by your Django app</li>
+                <li>This client is only for testing the MCP API endpoints once you have a valid access token</li>
+            </ul>
             <a href="http://localhost:8000" target="_blank"><button>Go to Django App</button></a>
         </div>
     </div>

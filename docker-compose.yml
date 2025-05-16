@@ -46,5 +46,25 @@ services:
       db:
         condition: service_healthy
 
+  django_client:
+    build:
+      context: ./django_client
+      dockerfile: Dockerfile
+    command: bash -c "./init_django.sh && python manage.py runserver 0.0.0.0:8000"
+    volumes:
+      - ./django_client:/app
+    ports:
+      - "8000:8000"
+    environment:
+      - DEBUG=True
+      - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY}
+      - MCP_SERVER_URL=http://app:8000
+      - OAUTH_CLIENT_ID=${OAUTH_CLIENT_ID}
+      - OAUTH_CLIENT_SECRET=${OAUTH_CLIENT_SECRET}
+      - OAUTH_REDIRECT_URI=http://localhost:8000/oauth/callback
+      - OAUTH_SCOPES=memories:read memories:write
+    depends_on:
+      - app
+
 volumes:
   postgres_data:

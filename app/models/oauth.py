@@ -44,7 +44,7 @@ class OAuthToken(Base):
     scopes = Column(ARRAY(String), nullable=False)
     expires_at = Column(DateTime, nullable=False)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    client_id = Column(Integer, ForeignKey("oauth_clients.id"), nullable=False)
+    client_id = Column(String, ForeignKey("oauth_clients.client_id"), nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
     

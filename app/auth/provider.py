@@ -237,21 +237,34 @@ class PicardOAuthProvider(OAuthServerProvider):
                     await db.refresh(user)
                 
                 # Generate authorization code with proper integer timestamp for exp
+                payload = {
+                    "sub": str(user.id),
+                    "client_id": client.client_id,
+                    "scopes": params.scopes,
+                    "redirect_uri": str(params.redirect_uri),
+                    "code_challenge": params.code_challenge,
+                    "code_challenge_method": params.code_challenge_method,
+                    "exp": int((datetime.utcnow() + timedelta(minutes=10)).timestamp())
+                }
                 auth_code = jwt.encode(
-                    {
-                        "sub": str(user.id),
-                        "client_id": client.client_id,
-                        "scopes": params.scopes,
-                        "redirect_uri": str(params.redirect_uri),
-                        "code_challenge": params.code_challenge,
-                        "exp": int((datetime.utcnow() + timedelta(minutes=10)).timestamp())
-                    },
+                    payload,
                     settings.JWT_SECRET_KEY,
                     algorithm=settings.JWT_ALGORITHM
                 )
                 
-                # Store the authorization code
-                # In a real implementation, you would store this in the database
+                # Store the authorization code in the database
+                auth_code_record = OAuthToken(
+                    access_token=auth_code,  # Store as access_token since we don't have a separate auth code table
+                    token_type="authorization_code",
+                    scopes=params.scopes,
+                    expires_at=datetime.fromtimestamp(payload["exp"]),
+                    user_id=user.id,
+                    client_id=client.client_id,
+                    code_challenge=params.code_challenge,
+                    code_challenge_method=params.code_challenge_method
+                )
+                db.add(auth_code_record)
+                await db.commit()
                 
                 # Return redirect URI with code
                 redirect_params = {"code": auth_code}
@@ -281,24 +294,33 @@ class PicardOAuthProvider(OAuthServerProvider):
     async def load_authorization_code(self, client: OAuthClientInformationFull, authorization_code: str) -> AuthorizationCode | None:
         """Loads an AuthorizationCode by its code"""
         try:
-            # In a real implementation, you would retrieve this from the database
-            # For MVP, we'll decode the JWT
-            payload = jwt.decode(
-                authorization_code,
-                settings.JWT_SECRET_KEY,
-                algorithms=[settings.JWT_ALGORITHM]
-            )
-            
-            # Verify client ID
-            if payload["client_id"] != client.client_id:
-                return None
-            
-            return AuthorizationCode(
-                code=authorization_code,
-                scopes=payload["scopes"],
-                expires_at=payload["exp"],
-                client_id=client.client_id,
-                code_challenge=payload["code_challenge"],
+            # Retrieve the authorization code from the database
+            async for db in get_db():
+                auth_code_result = await db.execute(
+                    select(OAuthToken).where(
+                        OAuthToken.access_token == authorization_code,
+                        OAuthToken.token_type == "authorization_code"
+                    )
+                )
+                auth_code_record = auth_code_result.scalars().first()
+                
+                if not auth_code_record:
+                    return None
+                    
+                # Verify client ID
+                if auth_code_record.client_id != client.client_id:
+                    return None
+                    
+                # Verify code challenge method
+                if auth_code_record.code_challenge_method != "S256":
+                    return None
+                    
+                return AuthorizationCode(
+                    code=authorization_code,
+                    scopes=auth_code_record.scopes,
+                    expires_at=auth_code_record.expires_at.timestamp(),
+                    client_id=client.client_id,
+                    code_challenge=auth_code_record.code_challenge,
                 redirect_uri=payload["redirect_uri"],
                 redirect_uri_provided_explicitly=True
             )
@@ -308,6 +330,10 @@ class PicardOAuthProvider(OAuthServerProvider):
     async def exchange_authorization_code(self, client: OAuthClientInformationFull, authorization_code: AuthorizationCode) -> OAuthToken:
         """Exchanges an authorization code for an access token and refresh token"""
         async for db in get_db():
+            print("=== Authorization Code Exchange ===")
+            print(f"Client ID: {client.client_id}")
+            print(f"Authorization Code: {authorization_code.code[:10]}...{authorization_code.code[-10:]}")
+            
             # Find the user
             try:
                 payload = jwt.decode(
@@ -315,10 +341,15 @@ class PicardOAuthProvider(OAuthServerProvider):
                     settings.JWT_SECRET_KEY,
                     algorithms=[settings.JWT_ALGORITHM]
                 )
+                print(f"JWT Payload: {payload}")
+                print(f"JWT client_id: {payload.get('client_id', 'not found')}")
+                
                 user_id = payload["sub"]
                 # Convert user_id from string to integer to match the database column type
                 user_id_int = int(user_id)
-                print(f"Looking up user with ID: {user_id_int} (converted from string: {user_id})")
+                print(f"Looking up user with ID: {user_id} (converted from string: {user_id_int})")
+                
+                # Find the user
                 user_result = await db.execute(
                     select(User).where(User.id == user_id_int)
                 )
@@ -338,6 +369,7 @@ class PicardOAuthProvider(OAuthServerProvider):
                     "scopes": authorization_code.scopes,
                     "exp": int(access_token_expires.timestamp())  # Ensure exp is an integer timestamp
                 }
+                print(f"Creating access token with client_id: {client.client_id}")
                 access_token = jwt.encode(
                     access_token_payload,
                     settings.JWT_SECRET_KEY,
@@ -384,6 +416,7 @@ class PicardOAuthProvider(OAuthServerProvider):
                     scopes=authorization_code.scopes,
                     expires_at=access_token_expires
                 )
+                print(f"Access token created with client_id type: {type(token.client_id)}")
                 db.add(token)
                 await db.commit()
                 
@@ -682,36 +715,60 @@ class PicardOAuthProvider(OAuthServerProvider):
     
     async def load_access_token(self, token: str) -> AccessToken | None:
         """Loads an access token by its token"""
-        async for db in get_db():
-            # Find the token in database
-            token_result = await db.execute(
-                select(OAuthToken).where(OAuthToken.access_token == token)
-            )
-            db_token = token_result.scalars().first()
+        try:
+            print("=== Token Validation Flow ===")
+            print(f"Attempting to validate token: {token[:10]}...{token[-10:]}")  # Only show partial token for security
             
-            if not db_token:
-                return None
-            
-            # Check if token is expired
-            if db_token.expires_at < datetime.utcnow():
-                return None
-            
-            try:
-                # Verify the token
-                payload = jwt.decode(
-                    token,
-                    settings.JWT_SECRET_KEY,
-                    algorithms=[settings.JWT_ALGORITHM]
+            async for db in get_db():
+                # Find the token in database
+                print("Looking up token in database...")
+                token_result = await db.execute(
+                    select(OAuthToken).where(OAuthToken.access_token == token)
                 )
+                db_token = token_result.scalars().first()
                 
-                return AccessToken(
-                    token=token,
-                    client_id=db_token.client_id,
-                    scopes=db_token.scopes,
-                    expires_at=int(db_token.expires_at.timestamp())
-                )
-            except jwt.JWTError:
-                return None
+                if not db_token:
+                    print("Token not found in database")
+                    return None
+                
+                print(f"Found token with client_id type: {type(db_token.client_id)}")
+                print(f"Token client_id value: {db_token.client_id}")
+                print(f"Token scopes: {db_token.scopes}")
+                print(f"Token expires_at: {db_token.expires_at}")
+                
+                # Check if token is expired
+                if db_token.expires_at < datetime.utcnow():
+                    print("Token has expired")
+                    return None
+                    
+                try:
+                    print("Attempting to decode JWT token...")
+                    # Verify the token
+                    payload = jwt.decode(
+                        token,
+                        settings.JWT_SECRET_KEY,
+                        algorithms=[settings.JWT_ALGORITHM]
+                    )
+                    print(f"JWT payload: {payload}")
+                    print(f"Payload client_id type: {type(payload.get('client_id', 'not found'))}")
+                    
+                    # Explicitly convert client_id to string
+                    client_id = str(db_token.client_id)
+                    print(f"Converted client_id to string: {client_id}")
+                    
+                    return AccessToken(
+                        token=token,
+                        client_id=client_id,
+                        scopes=db_token.scopes,
+                        expires_at=int(db_token.expires_at.timestamp())
+                    )
+                except jwt.JWTError as e:
+                    print(f"JWT decoding error: {str(e)}")
+                    return None
+                    
+        except Exception as e:
+            print(f"Unexpected error in load_access_token: {str(e)}")
+            raise
     
     async def revoke_token(self, token: AccessToken | RefreshToken) -> None:
         """Revokes an access or refresh token"""

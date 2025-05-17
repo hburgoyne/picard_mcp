@@ -24,7 +24,7 @@ config = context.config
 postgres_user = os.getenv("POSTGRES_USER", "postgres")
 postgres_password = os.getenv("POSTGRES_PASSWORD", "postgres")
 postgres_db = os.getenv("POSTGRES_DB", "picard_mcp")
-postgres_host = os.getenv("POSTGRES_HOST", "localhost")
+postgres_host = os.getenv("POSTGRES_HOST", "db")
 postgres_port = os.getenv("POSTGRES_PORT", "5432")
 
 # Set database URL in Alembic config

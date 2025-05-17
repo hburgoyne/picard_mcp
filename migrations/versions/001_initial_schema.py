@@ -11,7 +11,7 @@ import pgvector
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
-revision = '001'
+revision = '001_initial_schema'
 down_revision = None
 branch_labels = None
 depends_on = None

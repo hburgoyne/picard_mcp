@@ -243,7 +243,7 @@ class PicardOAuthProvider(OAuthServerProvider):
                     "scopes": params.scopes,
                     "redirect_uri": str(params.redirect_uri),
                     "code_challenge": params.code_challenge,
-                    "code_challenge_method": params.code_challenge_method,
+                    "code_challenge_method": "S256",  # Hardcode S256 for now as it's the only supported method
                     "exp": int((datetime.utcnow() + timedelta(minutes=10)).timestamp())
                 }
                 auth_code = jwt.encode(
@@ -261,7 +261,7 @@ class PicardOAuthProvider(OAuthServerProvider):
                     user_id=user.id,
                     client_id=client.client_id,
                     code_challenge=params.code_challenge,
-                    code_challenge_method=params.code_challenge_method
+                    code_challenge_method="S256"  # Hardcode S256 for now as it's the only supported method
                 )
                 db.add(auth_code_record)
                 await db.commit()
@@ -315,15 +315,22 @@ class PicardOAuthProvider(OAuthServerProvider):
                 if auth_code_record.code_challenge_method != "S256":
                     return None
                     
+                # Decode the JWT to get the redirect_uri
+                payload = jwt.decode(
+                    authorization_code,
+                    settings.JWT_SECRET_KEY,
+                    algorithms=[settings.JWT_ALGORITHM]
+                )
+                
                 return AuthorizationCode(
                     code=authorization_code,
                     scopes=auth_code_record.scopes,
                     expires_at=auth_code_record.expires_at.timestamp(),
                     client_id=client.client_id,
                     code_challenge=auth_code_record.code_challenge,
-                redirect_uri=payload["redirect_uri"],
-                redirect_uri_provided_explicitly=True
-            )
+                    redirect_uri=payload["redirect_uri"],
+                    redirect_uri_provided_explicitly=True
+                )
         except jwt.JWTError:
             return None
     

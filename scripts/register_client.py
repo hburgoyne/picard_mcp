@@ -1,28 +1,5 @@
 import os
 import sys
-
-# First, let's fix the attribute name mismatch in the provider.py file
-provider_path = '/app/app/auth/provider.py'
-
-with open(provider_path, 'r') as f:
-    content = f.read()
-
-# Replace 'allowed_scopes=client_info.scopes' with 'allowed_scopes=client_info.scope.split()'
-# Also fix the redirect_uris handling
-fixed_content = content.replace(
-    'allowed_scopes=client_info.scopes', 
-    'allowed_scopes=client_info.scope.split()'
-).replace(
-    'redirect_uris=[uri for uri in client.redirect_uris]',
-    'redirect_uris=[str(uri) for uri in client.redirect_uris]'
-)
-
-with open(provider_path, 'w') as f:
-    f.write(fixed_content)
-
-print("Fixed the attribute name mismatch in provider.py")
-
-# Now let's register the client
 import requests
 import json
 from dotenv import load_dotenv
@@ -31,9 +8,9 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Get the MCP server URL and OAuth settings
-mcp_server_url = os.getenv('MCP_SERVER_INTERNAL_URL', 'http://app:8000')
-client_id = os.getenv('OAUTH_CLIENT_ID', 'picard_client')
-client_secret = os.getenv('OAUTH_CLIENT_SECRET', 'picard_secret')
+mcp_server_url = os.getenv('MCP_SERVER_INTERNAL_URL', 'http://localhost:8001')
+client_id = os.getenv('OAUTH_CLIENT_ID', 'test_client')
+client_secret = os.getenv('OAUTH_CLIENT_SECRET', 'test_secret')
 redirect_uri = os.getenv('OAUTH_REDIRECT_URI', 'http://localhost:8000/oauth/callback')
 
 # Define the registration request

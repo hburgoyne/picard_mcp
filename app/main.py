@@ -120,11 +120,8 @@ register_memory_endpoints(mcp)
 register_llm_endpoints(mcp)
 
 # Mount MCP server to FastAPI app
-# Mount the OAuth endpoints at /oauth
-app.mount("/oauth", mcp.streamable_http_app())
-
-# Mount the MCP tools at /tools
-app.mount("/tools", mcp.streamable_http_app())
+# Mount at root to handle all paths
+app.mount("/", mcp.streamable_http_app())
 
 # Health check endpoint
 @app.get("/health")

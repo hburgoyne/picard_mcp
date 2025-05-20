@@ -18,12 +18,26 @@ async def test_oauth_flow():
     redirect_uri = settings.OAUTH_REDIRECT_URI
     
     # Step 1: Authorization Request
+    # Generate a simple code challenge for PKCE
+    import hashlib
+    import base64
+    import secrets
+    
+    # Generate code verifier
+    code_verifier = secrets.token_urlsafe(32)
+    
+    # Generate code challenge using S256 method
+    code_challenge_bytes = hashlib.sha256(code_verifier.encode('ascii')).digest()
+    code_challenge = base64.urlsafe_b64encode(code_challenge_bytes).decode('ascii').rstrip('=')
+    
     auth_params = {
         "response_type": "code",
         "client_id": client_id,
         "redirect_uri": redirect_uri,
         "scope": "memories:read memories:write",
-        "state": "test_state"
+        "state": "test_state",
+        "code_challenge": code_challenge,
+        "code_challenge_method": "S256"
     }
     auth_url = f"{base_url}/oauth/authorize?{urlencode(auth_params)}"
     
@@ -54,10 +68,11 @@ async def test_oauth_flow():
             "code": code,
             "redirect_uri": redirect_uri,
             "client_id": client_id,
-            "client_secret": settings.OAUTH_CLIENT_SECRET
+            "client_secret": settings.OAUTH_CLIENT_SECRET,
+            "code_verifier": code_verifier
         }
         
-        token_response = await client.post(f"{base_url}/auth/token", data=token_data)
+        token_response = await client.post(f"{base_url}/oauth/token", data=token_data)
         
         if token_response.status_code != 200:
             print(f"Error: {token_response.status_code} {token_response.text}")
@@ -76,7 +91,7 @@ async def test_oauth_flow():
         memory_data = {
             "text": "This is a test memory for vector embedding"
         }
-        memory_response = await client.post(f"{base_url}/tools/submit_memory", json=memory_data, headers=headers)
+        memory_response = await client.post(f"{base_url}/submit_memory", json=memory_data, headers=headers)
         
         if memory_response.status_code != 200:
             print(f"Error submitting memory: {memory_response.status_code} {memory_response.text}")
@@ -87,7 +102,7 @@ async def test_oauth_flow():
         print(f"Created memory with ID: {memory_id}")
         
         # Test retrieve_memories
-        memories_response = await client.post(f"{base_url}/tools/retrieve_memories", headers=headers)
+        memories_response = await client.post(f"{base_url}/retrieve_memories", headers=headers)
         
         if memories_response.status_code != 200:
             print(f"Error retrieving memories: {memories_response.status_code} {memories_response.text}")
@@ -102,7 +117,7 @@ async def test_oauth_flow():
             "permission": "public"
         }
         permission_response = await client.post(
-            f"{base_url}/tools/modify_permissions", 
+            f"{base_url}/modify_permissions", 
             json=permission_data, 
             headers=headers
         )
@@ -119,7 +134,7 @@ async def test_oauth_flow():
             "user_id": 1,  # Assuming user ID 1 exists
             "prompt": "What are your thoughts on local politics?"
         }
-        query_response = await client.post(f"{base_url}/tools/query_user", json=query_data, headers=headers)
+        query_response = await client.post(f"{base_url}/query_user", json=query_data, headers=headers)
         
         if query_response.status_code != 200:
             print(f"Error querying user: {query_response.status_code} {query_response.text}")

@@ -48,7 +48,7 @@ The Picard MCP system follows a client-server architecture with the following co
    - Uses its own PostgreSQL database separate from the MCP server
 
 3. **Docker Infrastructure**: Containerized deployment for easy setup and scaling
-   - Separate containers for MCP server, Django client, and PostgreSQL databases
+   - Separate containers for MCP server (port 8001), Django client (port 8000), and PostgreSQL databases
    - Configured networking for secure inter-container communication
    - Volume mounting for persistent data storage
    - Compatible with both local Docker deployment and Render cloud deployment
@@ -242,11 +242,28 @@ The core functionality of Picard MCP revolves around memory management with the 
 
 ### Memory Endpoints
 
+- **Get Memories**: `/api/tools` (tool: `get_memories`)
+  - Method: POST
+  - Description: Retrieve memories with optional filtering
+  - Authentication: Bearer token
+  - Request: Optional filter parameters (user_id, permission, expiration status)
+  - Response: List of memories accessible to the user
+  - Example Request:
+    ```json
+    {
+      "tool": "get_memories",
+      "data": {
+        "user_id": "550e8400-e29b-41d4-a716-446655440000",
+        "permission": "private"
+      }
+    }
+    ```
+
 - **Submit Memory**: `/api/tools` (tool: `submit_memory`)
   - Method: POST
   - Description: Create a new memory
   - Authentication: Bearer token
-  - Request: Memory text and permission level
+  - Request: Memory text, permission level, and expiration date (ISO 8601 format, e.g., "2025-12-31T23:59:59Z")
   - Response: Created memory details including UUID identifier
   - Example Request:
     ```json
@@ -269,6 +286,24 @@ The core functionality of Picard MCP revolves around memory management with the 
     {
       "tool": "retrieve_memories",
       "data": {}
+    }
+    ```
+
+- **Update Memory**: `/api/tools` (tool: `update_memory`)
+  - Method: POST
+  - Description: Update an existing memory
+  - Authentication: Bearer token
+  - Request: Memory ID, updated content, and optionally updated expiration date (ISO 8601 format)
+  - Response: Updated memory details
+  - Example Request:
+    ```json
+    {
+      "tool": "update_memory",
+      "data": {
+        "memory_id": "550e8400-e29b-41d4-a716-446655440000",
+        "text": "Updated memory content",
+        "expiration_date": "2026-01-01T00:00:00Z"
+      }
     }
     ```
 
@@ -370,6 +405,11 @@ The core functionality of Picard MCP revolves around memory management with the 
    ```bash
    docker-compose up -d
    ```
+   This will start the following services:
+   - `db-mcp`: PostgreSQL database for the MCP server (internal port 5432)
+   - `db-django`: PostgreSQL database for the Django client (internal port 5432)
+   - `mcp_server`: MCP server running on http://localhost:8001 (internal name: mcp_server:8000)
+   - `django_client`: Django client running on http://localhost:8000
 
 5. Register the Django client with the MCP server:
    ```bash
@@ -405,10 +445,11 @@ The repository includes test scripts to verify the functionality of both the MCP
 
 ### Data Protection
 
-- Memory text content is encrypted at rest in the database while metadata remains searchable
+- Memory text content is encrypted at rest using Python's Fernet symmetric encryption (AES-128 in CBC mode with PKCS7 padding) while metadata remains searchable
 - Personal identifiable information (PII) is protected through text field encryption
 - Access tokens have a 1-hour expiration time to limit exposure
 - Refresh tokens are long-lived but use rotation: each use generates a new refresh token and invalidates the old one
+- OAuth tokens are securely stored in the Django client's PostgreSQL database
 
 ### UUID Usage
 
@@ -475,6 +516,13 @@ The MCP server can be deployed in several ways:
    ```bash
    docker-compose up -d
    ```
+   
+   The Docker Compose configuration includes:
+   - Network configuration for inter-container communication
+   - Volume mounts for persistent data storage
+   - Environment variable configuration from .env files
+   - Port mappings (8000 for Django client, 8001 for MCP server)
+   - Health checks for service dependencies
 
 4. **Render Cloud Deployment**:
    Use the included `render.yaml` blueprint to deploy to Render.

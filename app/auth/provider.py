@@ -417,7 +417,7 @@ class PicardOAuthProvider(OAuthServerProvider):
                 # Store tokens in database
                 token = OAuthToken(
                     user_id=int(user.id),  # Ensure user_id is an integer
-                    client_id=oauth_client.id,  # Use the database ID instead of the client_id string
+                    client_id=client.client_id,  # Use the string client_id from the client object
                     access_token=access_token,
                     refresh_token=refresh_token,
                     scopes=authorization_code.scopes,

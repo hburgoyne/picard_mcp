@@ -95,7 +95,7 @@ def oauth_authorize(request):
     request.session['code_verifier'] = code_verifier
     
     # Build the authorization URL - use MCP_SERVER_URL for browser redirects
-    auth_url = f"{settings.MCP_SERVER_URL}/oauth/authorize"
+    auth_url = f"{settings.MCP_SERVER_URL}/authorize"
     params = {
         'response_type': 'code',
         'client_id': settings.OAUTH_CLIENT_ID,
@@ -126,7 +126,7 @@ def oauth_callback(request):
     
     # Exchange authorization code for tokens
     # Use MCP_SERVER_INTERNAL_URL for server-to-server communication
-    token_url = f"{getattr(settings, 'MCP_SERVER_INTERNAL_URL', settings.MCP_SERVER_URL)}/oauth/token"
+    token_url = f"{getattr(settings, 'MCP_SERVER_INTERNAL_URL', settings.MCP_SERVER_URL)}/token"
     print(f"Token URL: {token_url}")
     print(f"Client ID: {settings.OAUTH_CLIENT_ID}")
     print(f"Redirect URI: {settings.OAUTH_REDIRECT_URI}")
@@ -194,7 +194,7 @@ def refresh_token(request):
     
     # Exchange the refresh token for a new access token
     # Use MCP_SERVER_INTERNAL_URL for server-to-server communication
-    token_url = f"{getattr(settings, 'MCP_SERVER_INTERNAL_URL', settings.MCP_SERVER_URL)}/oauth/token"
+    token_url = f"{getattr(settings, 'MCP_SERVER_INTERNAL_URL', settings.MCP_SERVER_URL)}/token"
     data = {
         'grant_type': 'refresh_token',
         'refresh_token': token.refresh_token,

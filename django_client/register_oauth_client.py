@@ -20,7 +20,7 @@ def register_oauth_client():
     mcp_server_url = os.getenv('MCP_SERVER_INTERNAL_URL', 'http://app:8000')
     
     # Build the registration URL
-    registration_url = f"{mcp_server_url}/oauth/register"
+    registration_url = f"{mcp_server_url}/register"
     
     # Prepare the registration data
     data = {

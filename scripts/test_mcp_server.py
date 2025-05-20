@@ -11,10 +11,12 @@ import hashlib
 import base64
 import secrets
 import logging
+from datetime import datetime, timedelta
 from urllib.parse import urlencode, parse_qs, urlparse
 from typing import Dict, Any, List, Optional, Tuple
 
 import httpx
+from jose import jwt
 
 # Configure logging
 logging.basicConfig(
@@ -33,11 +35,21 @@ class MCPServerTest:
     
     def __init__(self, base_url: str = None):
         """Initialize test suite with base URL"""
-        # When running inside Docker, we need to use the service name as hostname
-        self.base_url = base_url or "http://app:8000"
-        self.client_id = settings.OAUTH_CLIENT_ID
-        self.client_secret = settings.OAUTH_CLIENT_SECRET
-        self.redirect_uri = settings.OAUTH_REDIRECT_URI
+        # Set DOCKER_ENV to indicate we're running inside Docker
+        os.environ['DOCKER_ENV'] = 'yes'
+        
+        # Determine base URL based on environment
+        if os.environ.get('DOCKER_ENV'):
+            # Running inside Docker
+            self.base_url = base_url or "http://app:8000"
+        else:
+            # Running outside Docker
+            self.base_url = base_url or "http://localhost:8001"  # Use port 8001 to match Docker config
+            
+        # Get OAuth credentials from environment variables if available
+        self.client_id = os.environ.get('OAUTH_CLIENT_ID', settings.OAUTH_CLIENT_ID)
+        self.client_secret = os.environ.get('OAUTH_CLIENT_SECRET', settings.OAUTH_CLIENT_SECRET)
+        self.redirect_uri = os.environ.get('OAUTH_REDIRECT_URI', settings.OAUTH_REDIRECT_URI)
         
         # Test results
         self.results = {
@@ -61,6 +73,7 @@ class MCPServerTest:
         logger.info(f"Initialized MCP server test suite with base URL: {self.base_url}")
         logger.info(f"Client ID: {self.client_id}")
         logger.info(f"Redirect URI: {self.redirect_uri}")
+        logger.info(f"Running in Docker: {os.environ.get('DOCKER_ENV', 'no')}")
     
     async def run_all_tests(self):
         """Run all tests in the test suite"""
@@ -125,119 +138,143 @@ class MCPServerTest:
         """Test OAuth 2.0 Authorization Code flow"""
         logger.info("Testing OAuth 2.0 Authorization Code flow")
         
-        # Step 1: Test authorization endpoint
-        auth_code = await self.test_authorization_endpoint()
-        
-        # Step 2: Test token endpoint (if authorization succeeded)
-        if auth_code:
-            await self.test_token_endpoint(auth_code)
-        else:
-            logger.error("Skipping token endpoint test due to authorization failure")
-    
-    async def test_authorization_endpoint(self) -> Optional[str]:
-        """Test authorization endpoint"""
-        logger.info("Testing authorization endpoint")
-        
-        # Generate PKCE parameters
-        self.code_verifier = secrets.token_urlsafe(32)
-        code_challenge_bytes = hashlib.sha256(self.code_verifier.encode('ascii')).digest()
-        self.code_challenge = base64.urlsafe_b64encode(code_challenge_bytes).decode('ascii').rstrip('=')
-        
-        # Build authorization request
-        auth_params = {
-            "response_type": "code",
-            "client_id": self.client_id,
-            "redirect_uri": self.redirect_uri,
-            "scope": "memories:read memories:write",
-            "state": "test_state",
-            "code_challenge": self.code_challenge,
-            "code_challenge_method": "S256"
-        }
-        auth_url = f"{self.base_url}/oauth/authorize?{urlencode(auth_params)}"
-        
-        logger.info(f"Authorization URL: {auth_url}")
-        
-        # Send authorization request
         try:
+            # Set DOCKER_ENV to indicate we're running inside Docker
+            os.environ['DOCKER_ENV'] = 'yes'
+            
+            # Determine base URL based on environment
+            if os.environ.get('DOCKER_ENV'):
+                # Running inside Docker
+                self.base_url = "http://app:8000"
+            else:
+                # Running outside Docker
+                self.base_url = "http://localhost:8001"  # Use port 8001 to match Docker config
+                
+            # Get OAuth credentials from environment variables if available
+            self.client_id = os.environ.get('OAUTH_CLIENT_ID', settings.OAUTH_CLIENT_ID)
+            self.client_secret = os.environ.get('OAUTH_CLIENT_SECRET', settings.OAUTH_CLIENT_SECRET)
+            self.redirect_uri = os.environ.get('OAUTH_REDIRECT_URI', settings.OAUTH_REDIRECT_URI)
+            
+            logger.info(f"Initialized MCP server test suite with base URL: {self.base_url}")
+            logger.info(f"Client ID: {self.client_id}")
+            logger.info(f"Redirect URI: {self.redirect_uri}")
+            logger.info(f"Running in Docker: {os.environ.get('DOCKER_ENV', 'no')}")
+            
+            # Generate PKCE parameters
+            self.code_verifier = secrets.token_urlsafe(32)
+            code_challenge_bytes = hashlib.sha256(self.code_verifier.encode('ascii')).digest()
+            self.code_challenge = base64.urlsafe_b64encode(code_challenge_bytes).decode('ascii').rstrip('=')
+            
+            # 1. Get authorization URL
+            # Use root path since MCP server is mounted at /
+            auth_url = f"{self.base_url}/authorize?" + urlencode({
+                'client_id': self.client_id,
+                'redirect_uri': self.redirect_uri,
+                'response_type': 'code',
+                'scope': ' '.join(['memories:read', 'memories:write']),
+                'state': secrets.token_urlsafe(16),
+                'code_challenge': self.code_challenge,
+                'code_challenge_method': 'S256'
+            })
+            logger.info(f"Authorization URL: {auth_url}")
+            
+            # 2. Simulate authorization request
             async with httpx.AsyncClient() as client:
-                response = await client.get(auth_url, follow_redirects=True)
+                # Make the authorization request
+                response = await client.get(auth_url)
                 
-                # Check if we got redirected to the callback URL
-                if str(response.url).startswith(self.redirect_uri):
-                    # Parse the callback URL
-                    parsed_url = urlparse(str(response.url))
-                    query_params = parse_qs(parsed_url.query)
-                    
-                    # Check if we got an authorization code
-                    if "code" in query_params:
-                        code = query_params["code"][0]
-                        logger.info(f"Received authorization code: {code[:10]}...")
-                        self.record_test_result("oauth_flow", "authorization_endpoint", True, data={"code": code})
-                        return code
-                    # Check if we got an error
-                    elif "error" in query_params:
-                        error = query_params["error"][0]
-                        error_description = query_params.get("error_description", [""])[0]
-                        error_message = f"Authorization error: {error} - {error_description}"
-                        self.record_test_result("oauth_flow", "authorization_endpoint", False, error=error_message)
-                        return None
+                if response.status_code != 302:
+                    raise Exception(f"Authorization request failed: {response.status_code}")
                 
-                # If we didn't get redirected to the callback URL
-                self.record_test_result(
-                    "oauth_flow", 
-                    "authorization_endpoint", 
-                    False, 
-                    error=f"Unexpected response: {response.status_code} {response.text}"
-                )
-                return None
-        except Exception as e:
-            self.record_test_result("oauth_flow", "authorization_endpoint", False, error=str(e))
-            return None
-    
-    async def test_token_endpoint(self, auth_code: str):
-        """Test token endpoint"""
-        logger.info("Testing token endpoint")
-        
-        # Build token request
-        token_data = {
-            "grant_type": "authorization_code",
-            "code": auth_code,
-            "redirect_uri": self.redirect_uri,
-            "client_id": self.client_id,
-            "client_secret": self.client_secret,
-            "code_verifier": self.code_verifier
-        }
-        
-        # Send token request
-        try:
+                # Extract the authorization code from the redirect URL
+                redirect_url = response.headers.get('location')
+                if not redirect_url:
+                    raise Exception("No redirect URL found in response")
+                
+                # Parse the redirect URL to get the code
+                params = parse_qs(urlparse(redirect_url).query)
+                auth_code = params.get('code', [None])[0]
+                
+                if not auth_code:
+                    raise Exception("No authorization code found in redirect URL")
+                
+                logger.info(f"Received authorization code: {auth_code[:10]}...")
+                code = auth_code
+            
+            # 3. Exchange authorization code for tokens
             async with httpx.AsyncClient() as client:
-                response = await client.post(f"{self.base_url}/oauth/token", data=token_data)
-                
-                # Check if we got a token
-                if response.status_code == 200:
-                    token_data = response.json()
+                try:
+                    # First, try to get the token endpoint URL from the well-known configuration
+                    well_known_url = f"{self.base_url}/.well-known/oauth-authorization-server"
+                    logger.info(f"Fetching OAuth configuration from: {well_known_url}")
                     
-                    # Validate token response
-                    if "access_token" in token_data and "token_type" in token_data:
-                        self.access_token = token_data["access_token"]
-                        logger.info(f"Received access token: {self.access_token[:10]}...")
-                        self.record_test_result("oauth_flow", "token_endpoint", True, data=token_data)
+                    response = await client.get(well_known_url)
+                    if response.status_code == 200:
+                        config = response.json()
+                        # If we're running in Docker, convert localhost to app service name
+                        token_endpoint = config.get('token_endpoint', f"{self.base_url}/oauth/token")
+                        token_endpoint = token_endpoint.replace('/token', '/token')
+                        if os.environ.get('DOCKER_ENV'):
+                            token_endpoint = token_endpoint.replace('http://localhost:8001', 'http://app:8000')
                     else:
-                        self.record_test_result(
-                            "oauth_flow", 
-                            "token_endpoint", 
-                            False, 
-                            error=f"Invalid token response: {token_data}"
-                        )
-                else:
-                    self.record_test_result(
-                        "oauth_flow", 
-                        "token_endpoint", 
-                        False, 
-                        error=f"Token request failed: {response.status_code} {response.text}"
+                        # Fall back to default endpoint if well-known config not available
+                        token_endpoint = f"{self.base_url}/oauth/token"
+                    
+                    logger.info(f"Using token endpoint: {token_endpoint}")
+                    
+                    response = await client.post(
+                        token_endpoint,
+                        data={
+                            'grant_type': 'authorization_code',
+                            'code': code,
+                            'redirect_uri': self.redirect_uri,
+                            'client_id': self.client_id,
+                            'client_secret': self.client_secret,
+                            'scope': ' '.join(['memories:read', 'memories:write']),
+                            'code_verifier': self.code_verifier
+                        },
+                        headers={
+                            'Accept': 'application/json',
+                            'Content-Type': 'application/x-www-form-urlencoded'
+                        },
+                        timeout=10.0
                     )
+                    
+                    if response.status_code != 200:
+                        error_msg = f"Token exchange failed: {response.status_code}"
+                        try:
+                            error_data = response.json()
+                            error_msg += f" - {error_data.get('error_description', 'No error description')}"
+                            logger.error(f"Token exchange response: {error_data}")
+                        except:
+                            error_msg += f" - {response.text}"
+                        raise Exception(error_msg)
+                    
+                    token_data = response.json()
+                    self.access_token = token_data['access_token']
+                    
+                    self.results['oauth_flow']['token_exchange'] = {
+                        'passed': True,
+                        'access_token': self.access_token[:10] + '...'  # Log only first 10 chars for security
+                    }
+                    logger.info("OAuth flow test completed successfully")
+                    
+                except httpx.RequestError as e:
+                    raise Exception(f"Request error during token exchange: {str(e)}")
+                except Exception as e:
+                    logger.error(f"Token exchange failed: {str(e)}")
+                    self.results['oauth_flow']['token_exchange'] = {
+                        'passed': False,
+                        'error': str(e)
+                    }
+                    return
+                
         except Exception as e:
-            self.record_test_result("oauth_flow", "token_endpoint", False, error=str(e))
+            logger.error(f"OAuth flow test failed: {str(e)}")
+            self.results['oauth_flow']['token_exchange'] = {
+                'passed': False,
+                'error': str(e)
+            }
     
     async def test_memory_endpoints(self):
         """Test memory endpoints"""
@@ -270,37 +307,34 @@ class MCPServerTest:
         # Send submit_memory request
         try:
             async with httpx.AsyncClient() as client:
-                # Try different endpoint paths to handle potential routing issues
-                endpoints_to_try = [
-                    f"{self.base_url}/submit_memory",
-                    f"{self.base_url}/tools/submit_memory"
-                ]
-                
-                for endpoint in endpoints_to_try:
-                    logger.info(f"Trying endpoint: {endpoint}")
-                    response = await client.post(
-                        endpoint,
-                        json=memory_data,
-                        headers={"Authorization": f"Bearer {self.access_token}"}
-                    )
+                # Use the MCP tool endpoint
+                endpoint = f"{self.base_url}/api/tools"
+                logger.info(f"Trying endpoint: {endpoint}")
+                response = await client.post(
+                    endpoint,
+                    json={
+                        "tool": "submit_memory",
+                        "data": memory_data
+                    },
+                    headers={"Authorization": f"Bearer {self.access_token}"}
+                )                  
+                # Check if the request succeeded
+                if response.status_code == 200:
+                    memory = response.json()
                     
-                    # Check if the request succeeded
-                    if response.status_code == 200:
-                        memory = response.json()
-                        
-                        # Validate memory response
-                        if "id" in memory and "text" in memory:
-                            self.test_memory_id = memory["id"]
-                            logger.info(f"Created memory with ID: {self.test_memory_id}")
-                            self.record_test_result("memory_endpoints", "submit_memory", True, data=memory)
-                            return
+                    # Validate memory response
+                    if "id" in memory and "text" in memory:
+                        self.test_memory_id = memory["id"]
+                        logger.info(f"Created memory with ID: {self.test_memory_id}")
+                        self.record_test_result("memory_endpoints", "submit_memory", True, data=memory)
+                        return
                 
-                # If all endpoints failed
+                # If the request failed
                 self.record_test_result(
                     "memory_endpoints", 
                     "submit_memory", 
                     False, 
-                    error=f"All endpoints failed. Last response: {response.status_code} {response.text}"
+                    error=f"Request failed. Response: {response.status_code} {response.text}"
                 )
         except Exception as e:
             self.record_test_result("memory_endpoints", "submit_memory", False, error=str(e))
@@ -312,35 +346,33 @@ class MCPServerTest:
         # Send retrieve_memories request
         try:
             async with httpx.AsyncClient() as client:
-                # Try different endpoint paths to handle potential routing issues
-                endpoints_to_try = [
-                    f"{self.base_url}/retrieve_memories",
-                    f"{self.base_url}/tools/retrieve_memories"
-                ]
-                
-                for endpoint in endpoints_to_try:
-                    logger.info(f"Trying endpoint: {endpoint}")
-                    response = await client.post(
-                        endpoint,
-                        headers={"Authorization": f"Bearer {self.access_token}"}
-                    )
+                # Use the MCP tool endpoint
+                endpoint = f"{self.base_url}/api/tools"
+                logger.info(f"Trying endpoint: {endpoint}")
+                response = await client.post(
+                    endpoint,
+                    json={
+                        "tool": "retrieve_memories",
+                        "data": {}
+                    },
+                    headers={"Authorization": f"Bearer {self.access_token}"}
+                )                  
+                # Check if the request succeeded
+                if response.status_code == 200:
+                    memories = response.json()
                     
-                    # Check if the request succeeded
-                    if response.status_code == 200:
-                        memories = response.json()
-                        
-                        # Validate memories response
-                        if isinstance(memories, list):
-                            logger.info(f"Retrieved {len(memories)} memories")
-                            self.record_test_result("memory_endpoints", "retrieve_memories", True, data=memories)
-                            return
+                    # Validate memories response
+                    if isinstance(memories, list):
+                        logger.info(f"Retrieved {len(memories)} memories")
+                        self.record_test_result("memory_endpoints", "retrieve_memories", True, data=memories)
+                        return
                 
-                # If all endpoints failed
+                # If the request failed
                 self.record_test_result(
                     "memory_endpoints", 
                     "retrieve_memories", 
                     False, 
-                    error=f"All endpoints failed. Last response: {response.status_code} {response.text}"
+                    error=f"Request failed. Response: {response.status_code} {response.text}"
                 )
         except Exception as e:
             self.record_test_result("memory_endpoints", "retrieve_memories", False, error=str(e))
@@ -358,36 +390,33 @@ class MCPServerTest:
         # Send modify_permissions request
         try:
             async with httpx.AsyncClient() as client:
-                # Try different endpoint paths to handle potential routing issues
-                endpoints_to_try = [
-                    f"{self.base_url}/modify_permissions",
-                    f"{self.base_url}/tools/modify_permissions"
-                ]
-                
-                for endpoint in endpoints_to_try:
-                    logger.info(f"Trying endpoint: {endpoint}")
-                    response = await client.post(
-                        endpoint,
-                        json=permission_data,
-                        headers={"Authorization": f"Bearer {self.access_token}"}
-                    )
+                # Use the MCP tool endpoint
+                endpoint = f"{self.base_url}/api/tools"
+                logger.info(f"Trying endpoint: {endpoint}")
+                response = await client.post(
+                    endpoint,
+                    json={
+                        "tool": "modify_permissions",
+                        "data": permission_data
+                    },
+                    headers={"Authorization": f"Bearer {self.access_token}"}
+                )                  
+                # Check if the request succeeded
+                if response.status_code == 200:
+                    memory = response.json()
                     
-                    # Check if the request succeeded
-                    if response.status_code == 200:
-                        memory = response.json()
-                        
-                        # Validate memory response
-                        if "id" in memory and "permission" in memory:
-                            logger.info(f"Updated memory permission to: {memory['permission']}")
-                            self.record_test_result("memory_endpoints", "modify_permissions", True, data=memory)
-                            return
+                    # Validate memory response
+                    if "id" in memory and "permission" in memory:
+                        logger.info(f"Updated memory permission to: {memory['permission']}")
+                        self.record_test_result("memory_endpoints", "modify_permissions", True, data=memory)
+                        return
                 
-                # If all endpoints failed
+                # If the request failed
                 self.record_test_result(
                     "memory_endpoints", 
                     "modify_permissions", 
                     False, 
-                    error=f"All endpoints failed. Last response: {response.status_code} {response.text}"
+                    error=f"Request failed. Response: {response.status_code} {response.text}"
                 )
         except Exception as e:
             self.record_test_result("memory_endpoints", "modify_permissions", False, error=str(e))

@@ -492,6 +492,10 @@ The MCP server includes Swagger/OpenAPI documentation for all endpoints:
   - Documents previously solved bugs and their solutions
   - Provides troubleshooting guidance for common issues
 
+- **PLANNING.md**: Tracks the breakdown of tasks required to implement the site
+  - Lists tasks and subtasks required to implement the site
+  - Documents if a task has been completed with a checkbox
+
 ## Deployment
 
 This project includes a `render.yaml` blueprint for deploying to Render. The same codebase works both locally in Docker containers and when deployed to Render cloud services.

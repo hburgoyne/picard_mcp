@@ -11,7 +11,8 @@ import sys
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 # Import the SQLAlchemy models
-from app.models import BaseModel
+from app.db.session import Base
+from app.models import BaseModel, User, Memory, OAuthClient, AuthorizationCode, Token
 from app.core.config import settings
 
 # this is the Alembic Config object, which provides
@@ -29,7 +30,7 @@ config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
 # for 'autogenerate' support
 # from myapp import mymodel
 # target_metadata = mymodel.Base.metadata
-target_metadata = BaseModel.metadata
+target_metadata = Base.metadata
 
 # other values from the config, defined by the needs of env.py,
 # can be acquired:

@@ -1,4 +1,4 @@
-from pydantic import BaseModel, UUID4, Field, field_validator
+from pydantic import BaseModel, UUID4, Field, field_validator, ConfigDict
 from typing import Optional, List, Union
 from datetime import datetime
 import uuid
@@ -47,8 +47,7 @@ class MemoryInDBBase(MemoryBase):
     updated_at: datetime
     embedding: Optional[List[float]] = None
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 class MemoryResponse(MemoryInDBBase):
     """Schema for memory data returned to client."""
@@ -87,5 +86,4 @@ class MemorySearchResults(BaseModel):
     query: str
     results: List[tuple[MemoryResponse, float]]
     
-    class Config:
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)

@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr, UUID4, Field
+from pydantic import BaseModel, EmailStr, UUID4, Field, ConfigDict
 from typing import Optional
 from datetime import datetime
 
@@ -26,8 +26,7 @@ class UserInDBBase(UserBase):
     created_at: datetime
     updated_at: datetime
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 class User(UserInDBBase):
     """Schema for user data returned to client."""
@@ -36,3 +35,7 @@ class User(UserInDBBase):
 class UserInDB(UserInDBBase):
     """Schema for user data stored in database (includes hashed password)."""
     hashed_password: str
+
+class UserResponse(UserInDBBase):
+    """Schema for user data returned in API responses."""
+    full_name: Optional[str] = None

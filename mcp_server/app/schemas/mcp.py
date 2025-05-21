@@ -43,6 +43,18 @@ class QueryMemoryRequest(BaseModel):
     query: str
     limit: int = 10
 
+class MemoryQueryRequest(BaseModel):
+    """Schema for memory query request used by LLM endpoints."""
+    query: str
+    persona: str = "default"
+    max_tokens: int = 500
+    temperature: float = 0.7
+
+class MemoryQueryResponse(BaseModel):
+    """Schema for memory query response from LLM endpoints."""
+    response: str
+    memories_used: List[str] = []
+
 class QueryUserRequest(BaseModel):
     """Schema for query_user tool request."""
     user_id: UUID4

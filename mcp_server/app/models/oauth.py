@@ -15,8 +15,19 @@ class OAuthClient(BaseModel):
     client_secret = Column(String, nullable=False)
     client_name = Column(String, nullable=False)
     redirect_uris = Column(ARRAY(String), nullable=False)
+    grant_types = Column(ARRAY(String), nullable=True, default=["authorization_code", "refresh_token"])
+    response_types = Column(ARRAY(String), nullable=True, default=["code"])
     scopes = Column(ARRAY(String), nullable=False)
     is_confidential = Column(Boolean, default=True)
+    
+    # Additional fields from ClientRegistrationRequest
+    client_uri = Column(String, nullable=True)
+    logo_uri = Column(String, nullable=True)
+    tos_uri = Column(String, nullable=True)
+    policy_uri = Column(String, nullable=True)
+    jwks_uri = Column(String, nullable=True)
+    software_id = Column(String, nullable=True)
+    software_version = Column(String, nullable=True)
     
     # Relationships
     authorization_codes = relationship("AuthorizationCode", back_populates="client", cascade="all, delete-orphan")
@@ -70,3 +81,6 @@ class Token(BaseModel):
     def is_refresh_token_expired(self):
         """Check if the refresh token has expired."""
         return datetime.utcnow() > datetime.fromisoformat(self.refresh_token_expires_at)
+
+# Alias for Token to maintain compatibility with imports
+OAuthToken = Token

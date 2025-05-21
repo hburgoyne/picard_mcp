@@ -1,6 +1,7 @@
 from sqlalchemy import Column, String, ForeignKey, DateTime, Text
-from sqlalchemy.dialects.postgresql import UUID, VECTOR
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
+from pgvector.sqlalchemy import Vector
 import uuid
 from datetime import datetime
 
@@ -14,7 +15,7 @@ class Memory(BaseModel):
     text = Column(Text, nullable=False)
     encrypted_text = Column(Text, nullable=True)  # For storing encrypted version of the text
     permission = Column(String, nullable=False, default="private")  # private, public
-    embedding = Column(VECTOR(1536), nullable=True)  # Vector embedding for semantic search
+    embedding = Column(Vector(1536), nullable=True)  # Vector embedding for semantic search
     expiration_date = Column(DateTime, nullable=True)  # When the memory expires
     
     # Relationships

@@ -10,7 +10,7 @@ import time
 from datetime import datetime, timedelta
 
 from app.db.session import get_db
-from app.models.oauth import OAuthClient, OAuthToken
+from app.models.oauth import OAuthClient, Token as OAuthToken
 from app.models.user import User
 from app.schemas.oauth import (
     ClientRegistrationRequest, 

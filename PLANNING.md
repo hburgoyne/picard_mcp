@@ -157,55 +157,22 @@ This document outlines the step-by-step implementation plan for the Picard MCP p
    cd picard_mcp
    ```
 
-2. Create `.env` files for both MCP server and Django client:
+2. Create `.env` files for both MCP server and Django client by copying from the example files:
    
-   For MCP server (`.env` in project root):
+   ```bash
+   # Copy example files to create your actual .env files
+   cp .env.example .env
+   cp django_client/.env.example django_client/.env
    ```
-   # PostgreSQL Configuration
-   POSTGRES_USER=postgres
-   POSTGRES_PASSWORD=postgres
-   POSTGRES_DB=picard_mcp
-   POSTGRES_HOST=db
-   POSTGRES_PORT=5432
+   
+   Then edit the `.env` files to add your actual sensitive values. The example files contain placeholders for all required environment variables:
+   
+   - `.env.example` - For the MCP server environment variables
+   - `django_client/.env.example` - For the Django client environment variables
+   
+   These example files are committed to the repository for documentation, while the actual `.env` files are excluded via `.gitignore` to keep sensitive information out of version control.
 
-   # MCP Server Configuration
-   MCP_SERVER_NAME=Picard MCP
-   MCP_SERVER_HOST=0.0.0.0
-   MCP_SERVER_PORT=8000
-   MCP_ISSUER_URL=http://localhost:8001
 
-   # OAuth Configuration
-   OAUTH_CLIENT_ID=550e8400-e29b-41d4-a716-446655440000
-   OAUTH_CLIENT_SECRET=a_strong_random_secret_at_least_32_characters
-   OAUTH_REDIRECT_URI=http://localhost:8000/oauth/callback
-
-   # OpenAI Configuration
-   OPENAI_API_KEY=your_openai_api_key
-   ```
-
-   For Django client (`.env` in `django_client` directory):
-   ```
-   # Django settings
-   DEBUG=True
-   DJANGO_SECRET_KEY=django-insecure-key-for-development-only
-
-   # Database settings
-   DB_NAME=django_client
-   DB_USER=postgres
-   DB_PASSWORD=postgres
-   DB_HOST=db
-   DB_PORT=5432
-
-   # MCP Server settings
-   MCP_SERVER_URL=http://localhost:8001
-   MCP_SERVER_INTERNAL_URL=http://mcp_server:8000
-
-   # OAuth settings
-   OAUTH_CLIENT_ID=550e8400-e29b-41d4-a716-446655440000
-   OAUTH_CLIENT_SECRET=a_strong_random_secret_at_least_32_characters
-   OAUTH_REDIRECT_URI=http://localhost:8000/oauth/callback
-   OAUTH_SCOPES=memories:read memories:write
-   ```
 
 3. Start the services using Docker Compose:
    ```bash

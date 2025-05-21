@@ -46,19 +46,31 @@ At this phase, the primary testing is to verify that the Docker environment is p
 
 ### Environment Configuration Tests
 
-These manual tests verify that the environment variables are properly set up:
+These manual tests verify that the environment variables are properly loaded from .env files:
 
-1. **MCP Server Environment Test**:
+1. **Environment Files Setup Test**:
+   ```bash
+   # Verify that .env files exist
+   ls -la .env
+   ls -la django_client/.env
+   ```
+   Both files should exist. If they don't, create them from the example files:
+   ```bash
+   cp .env.example .env
+   cp django_client/.env.example django_client/.env
+   ```
+
+2. **MCP Server Environment Test**:
    ```bash
    docker exec picard_mcp-mcp_server env | grep -E "POSTGRES|MCP|OAUTH"
    ```
-   Verify that all required environment variables are set.
+   Verify that all required environment variables are loaded from the .env file.
 
-2. **Django Client Environment Test**:
+3. **Django Client Environment Test**:
    ```bash
    docker exec picard_mcp-django_client env | grep -E "DB_|MCP|OAUTH"
    ```
-   Verify that all required environment variables are set.
+   Verify that all required environment variables are loaded from the django_client/.env file.
 
 ## Future Testing Plans
 

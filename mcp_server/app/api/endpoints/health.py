@@ -2,6 +2,7 @@
 Health check API endpoints.
 """
 from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy import text
 from sqlalchemy.orm import Session
 from app.db.session import get_db
 from app.utils.logger import logger
@@ -29,8 +30,8 @@ async def health_check(db: Session = Depends(get_db)):
     
     # Check database connection
     try:
-        # Execute a simple query
-        db.execute("SELECT 1")
+        # Execute a simple query using SQLAlchemy text construct
+        db.execute(text("SELECT 1"))
         health_info["database"] = "connected"
     except Exception as e:
         logger.error(f"Database health check failed: {str(e)}")

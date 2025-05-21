@@ -5,7 +5,7 @@ from typing import List, Optional
 
 from app.db.session import get_db
 from app.models.user import User
-from app.schemas.user import UserCreate, UserResponse, UserUpdate
+from app.schemas.user import UserCreate, User as UserResponse, UserUpdate
 from app.utils.security import get_password_hash, verify_password
 from app.api.deps import get_current_user
 

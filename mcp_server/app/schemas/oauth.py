@@ -117,3 +117,35 @@ class TokenResponse(BaseModel):
     expires_in: int
     refresh_token: str
     scope: str
+
+# Add these schema classes for client registration
+class ClientRegistrationRequest(BaseModel):
+    """Schema for client registration request."""
+    client_name: str
+    redirect_uris: List[str]
+    grant_types: Optional[List[str]] = ["authorization_code", "refresh_token"]
+    response_types: Optional[List[str]] = ["code"]
+    scopes: List[str]
+    client_uri: Optional[str] = None
+    logo_uri: Optional[str] = None
+    tos_uri: Optional[str] = None
+    policy_uri: Optional[str] = None
+    jwks_uri: Optional[str] = None
+    software_id: Optional[str] = None
+    software_version: Optional[str] = None
+
+    @validator("scopes")
+    def validate_scopes(cls, v):
+        """Validate scope values."""
+        allowed_scopes = ["memories:read", "memories:write", "memories:admin"]
+        for scope in v:
+            if scope not in allowed_scopes:
+                raise ValueError(f"Scope must be one of: {', '.join(allowed_scopes)}")
+        return v
+
+class ClientRegistrationResponse(BaseModel):
+    """Schema for client registration response."""
+    client_id: str
+    client_secret: str
+    client_id_issued_at: int
+    client_secret_expires_at: int

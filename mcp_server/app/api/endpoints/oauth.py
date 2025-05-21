@@ -15,7 +15,9 @@ from app.models.user import User
 from app.schemas.oauth import (
     ClientRegistrationRequest, 
     ClientRegistrationResponse,
-    TokenResponse
+    TokenResponse,
+    AuthorizationRequest,
+    TokenRequest
 )
 from app.core.config import settings
 from app.utils.security import (
@@ -131,8 +133,9 @@ async def token_endpoint(
             refresh_token=refresh_token,
             client_id=client.id,
             user_id=user.id,
-            scopes=client.scopes,
-            expires_at=datetime.utcnow() + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+            scope=client.scopes,
+            access_token_expires_at=(datetime.utcnow() + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)).isoformat(),
+            refresh_token_expires_at=(datetime.utcnow() + timedelta(days=30)).isoformat()
         )
         db.add(token)
         await db.commit()
@@ -185,7 +188,8 @@ async def token_endpoint(
         if token:
             token.access_token = access_token
             token.refresh_token = new_refresh_token
-            token.expires_at = datetime.utcnow() + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+            token.access_token_expires_at = (datetime.utcnow() + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)).isoformat()
+            token.refresh_token_expires_at = (datetime.utcnow() + timedelta(days=30)).isoformat()
             await db.commit()
         else:
             # Create new token record
@@ -194,8 +198,9 @@ async def token_endpoint(
                 refresh_token=new_refresh_token,
                 client_id=client.id,
                 user_id=user.id,
-                scopes=client.scopes,
-                expires_at=datetime.utcnow() + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+                scope=client.scopes,
+                access_token_expires_at=(datetime.utcnow() + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)).isoformat(),
+                refresh_token_expires_at=(datetime.utcnow() + timedelta(days=30)).isoformat()
             )
             db.add(new_token)
             await db.commit()
@@ -282,7 +287,7 @@ async def userinfo(
     result = await db.execute(select(OAuthToken).filter(OAuthToken.access_token == token))
     token_obj = result.scalars().first()
     
-    if not token_obj or token_obj.expires_at < datetime.utcnow():
+    if not token_obj or datetime.fromisoformat(token_obj.access_token_expires_at) < datetime.utcnow():
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or expired token",

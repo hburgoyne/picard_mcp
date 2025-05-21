@@ -8,7 +8,7 @@ from app.db.session import get_db
 from app.models.memory import Memory
 from app.models.user import User
 from app.api.deps import get_current_user_with_memory_read
-from app.schemas.mcp import MemoryQueryRequest, MemoryQueryResponse
+from app.schemas.mcp import QueryMemoryRequest as MemoryQueryRequest, MCPToolResponse as MemoryQueryResponse
 from app.utils.langchain_utils import query_memories_with_langchain
 
 router = APIRouter()

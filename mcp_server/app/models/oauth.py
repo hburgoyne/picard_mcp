@@ -17,6 +17,15 @@ class OAuthClient(BaseModel):
     redirect_uris = Column(ARRAY(String), nullable=False)
     scopes = Column(ARRAY(String), nullable=False)
     is_confidential = Column(Boolean, default=True)
+    grant_types = Column(ARRAY(String), nullable=True)
+    response_types = Column(ARRAY(String), nullable=True)
+    client_uri = Column(String, nullable=True)
+    logo_uri = Column(String, nullable=True)
+    tos_uri = Column(String, nullable=True)
+    policy_uri = Column(String, nullable=True)
+    jwks_uri = Column(String, nullable=True)
+    software_id = Column(String, nullable=True)
+    software_version = Column(String, nullable=True)
     
     # Relationships
     authorization_codes = relationship("AuthorizationCode", back_populates="client", cascade="all, delete-orphan")

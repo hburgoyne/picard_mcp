@@ -9,7 +9,7 @@ import logging
 
 from app.db.session import get_db
 from app.models.user import User
-from app.models.oauth import OAuthToken
+from app.models.oauth import Token as OAuthToken
 from app.core.config import settings
 from app.utils.security import decode_token
 from app.schemas.token import TokenData

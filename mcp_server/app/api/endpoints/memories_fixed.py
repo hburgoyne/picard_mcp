@@ -36,7 +36,7 @@ async def create_memory(
     Create a new memory for the current user.
     """
     # Get the database session from the generator
-    db = await get_session_from_generator(db_gen)
+db = await get_session_from_generator(db_gen)
     
     # Generate embedding for the memory text
     embedding = await get_embedding(memory.text)
@@ -72,7 +72,7 @@ async def read_memories(
     Retrieve all memories for the current user.
     """
     # Get the database session from the generator
-    db = await get_session_from_generator(db_gen)
+db = await get_session_from_generator(db_gen)
     
     query = select(Memory).filter(
         Memory.user_id == current_user.id,
@@ -96,7 +96,7 @@ async def search_memories(
     Search memories using semantic similarity.
     """
     # Get the database session from the generator
-    db = await get_session_from_generator(db_gen)
+db = await get_session_from_generator(db_gen)
     
     # Generate embedding for the query
     query_embedding = await get_embedding(query)
@@ -133,7 +133,7 @@ async def read_memory(
     Get a specific memory by ID.
     """
     # Get the database session from the generator
-    db = await get_session_from_generator(db_gen)
+db = await get_session_from_generator(db_gen)
     
     query = select(Memory).filter(Memory.id == memory_id)
     result = await db.execute(query)
@@ -172,7 +172,7 @@ async def update_memory(
     Update a memory.
     """
     # Get the database session from the generator
-    db = await get_session_from_generator(db_gen)
+db = await get_session_from_generator(db_gen)
     
     query = select(Memory).filter(Memory.id == memory_id)
     result = await db.execute(query)
@@ -224,7 +224,7 @@ async def delete_memory(
     Delete a memory.
     """
     # Get the database session from the generator
-    db = await get_session_from_generator(db_gen)
+db = await get_session_from_generator(db_gen)
     
     query = select(Memory).filter(Memory.id == memory_id)
     result = await db.execute(query)

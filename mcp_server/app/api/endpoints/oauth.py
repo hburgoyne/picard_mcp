@@ -14,6 +14,7 @@ from typing import Optional, Dict, Any, List
 import uuid
 import secrets
 import time
+import asyncio
 from datetime import datetime, timedelta
 
 from app.db.session import get_db
@@ -25,6 +26,7 @@ from app.schemas.oauth import (
     TokenResponse
 )
 from app.core.config import settings
+from app.utils.db_utils import get_session_from_generator
 from app.utils.security import (
     create_access_token,
     create_refresh_token,
@@ -37,36 +39,33 @@ router = APIRouter()
 @router.post("/register", response_model=ClientRegistrationResponse, status_code=status.HTTP_201_CREATED)
 async def register_client(
     request: ClientRegistrationRequest,
-    db: AsyncSession = Depends(get_db)
+    db_gen = Depends(get_db)
 ):
     """
     Register a new OAuth client
     """
+    # Get the database session from the generator
+    db = await get_session_from_generator(db_gen)
+    
     # Generate client ID and secret
     client_id = str(uuid.uuid4())
     client_secret = secrets.token_urlsafe(32)
     
-    # Create new OAuth client
-    new_client = OAuthClient(
+    # Create new client
+    client = OAuthClient(
         client_id=client_id,
         client_secret=get_password_hash(client_secret),
         client_name=request.client_name,
-        redirect_uris=request.redirect_uris,
-        grant_types=request.grant_types,
-        response_types=request.response_types,
-        scopes=request.scopes,
         client_uri=request.client_uri,
-        logo_uri=request.logo_uri,
-        tos_uri=request.tos_uri,
-        policy_uri=request.policy_uri,
-        jwks_uri=request.jwks_uri,
-        software_id=request.software_id,
-        software_version=request.software_version
+        redirect_uris=" ".join(request.redirect_uris),
+        scopes=" ".join(request.scopes),
+        client_id_issued_at=int(time.time()),
+        client_secret_expires_at=0  # Never expires
     )
     
-    db.add(new_client)
+    db.add(client)
     await db.commit()
-    await db.refresh(new_client)
+    await db.refresh(client)
     
     # Return client credentials
     return ClientRegistrationResponse(
@@ -84,11 +83,14 @@ async def token_endpoint(
     client_id: str = Form(...),
     client_secret: str = Form(...),
     redirect_uri: Optional[str] = Form(None),
-    db: AsyncSession = Depends(get_db)
+    db_gen = Depends(get_db)
 ):
     """
     OAuth 2.0 token endpoint
     """
+    # Get the database session from the generator
+    db = await get_session_from_generator(db_gen)
+    
     # Validate client credentials
     result = await db.execute(select(OAuthClient).filter(OAuthClient.client_id == client_id))
     client = result.scalars().first()
@@ -228,11 +230,14 @@ async def authorize(
     redirect_uri: str,
     scope: Optional[str] = None,
     state: Optional[str] = None,
-    db: AsyncSession = Depends(get_db)
+    db_gen = Depends(get_db)
 ):
     """
     OAuth 2.0 authorization endpoint
     """
+    # Get the database session from the generator
+    db = await get_session_from_generator(db_gen)
+    
     # Validate client
     result = await db.execute(select(OAuthClient).filter(OAuthClient.client_id == client_id))
     client = result.scalars().first()
@@ -269,11 +274,14 @@ async def authorize(
 @router.get("/userinfo")
 async def userinfo(
     request: Request,
-    db: AsyncSession = Depends(get_db)
+    db_gen = Depends(get_db)
 ):
     """
     OAuth 2.0 userinfo endpoint
     """
+    # Get the database session from the generator
+    db = await get_session_from_generator(db_gen)
+    
     # Extract token from Authorization header
     auth_header = request.headers.get("Authorization")
     if not auth_header or not auth_header.startswith("Bearer "):

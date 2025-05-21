@@ -8,6 +8,7 @@ from datetime import datetime, timedelta
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import NullPool
+from sqlalchemy import text
 
 # Add the parent directory to sys.path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))  
@@ -19,6 +20,9 @@ from app.db.session import get_db, Base
 
 # Create a test database URL
 TEST_DATABASE_URL = settings.ASYNC_DATABASE_URL + "_test"
+
+# Extract the database name from the URL
+db_name = TEST_DATABASE_URL.split("/")[-1]
 
 # Create a test engine
 engine_test = create_async_engine(
@@ -46,10 +50,36 @@ def event_loop():
 @pytest.fixture(scope="session")
 async def setup_test_db():
     """Set up the test database once per session."""
-    # Create the test database and tables
+    # Create the test database if it doesn't exist
+    # Connect to the default postgres database to create the test database
+    default_engine = create_async_engine(
+        settings.ASYNC_DATABASE_URL.rsplit('/', 1)[0] + '/postgres',
+        poolclass=NullPool,
+        isolation_level='AUTOCOMMIT'
+    )
+    
+    try:
+        async with default_engine.begin() as conn:
+            # Check if database exists
+            result = await conn.execute(text(f"SELECT 1 FROM pg_database WHERE datname = '{db_name}'"))
+            if result.scalar() is None:
+                print(f"Creating test database: {db_name}")
+                await conn.execute(text(f"CREATE DATABASE {db_name}"))
+    except Exception as e:
+        print(f"Error creating test database: {e}")
+    finally:
+        await default_engine.dispose()
+    
+    # Now connect to the test database and create tables
     async with engine_test.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
         await conn.run_sync(Base.metadata.create_all)
+        
+        # Initialize pgvector extension
+        try:
+            await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
+        except Exception as e:
+            print(f"Error initializing pgvector extension: {e}")
     
     yield
     
@@ -60,24 +90,18 @@ async def setup_test_db():
 @pytest.fixture
 async def db_session(setup_test_db):
     """Return a database session for each test."""
-    connection = await engine_test.connect()
-    transaction = await connection.begin()
-    session = TestingSessionLocal(bind=connection)
-    
-    try:
+    async with TestingSessionLocal() as session:
         yield session
-    finally:
-        await session.close()
-        await transaction.rollback()
-        await connection.close()
 
+# This is a key change - we're completely replacing the get_db dependency
+# with a simple function that returns the test session directly
 @pytest.fixture
 def override_get_db(db_session):
     """Override the get_db dependency for testing."""
-    # Create a simple dependency that yields the session
-    async def _override_get_db():
+    async def _get_test_db():
         yield db_session
-    return _override_get_db
+    
+    return _get_test_db
 
 @pytest.fixture
 def test_app(override_get_db):

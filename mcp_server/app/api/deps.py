@@ -6,6 +6,9 @@ from sqlalchemy.future import select
 from typing import Optional, List, Dict, Any
 from pydantic import ValidationError
 import logging
+import asyncio
+
+from app.utils.db_utils import get_session_from_generator
 
 from app.db.session import get_db
 from app.models.user import User
@@ -29,7 +32,7 @@ logger = logging.getLogger(__name__)
 async def get_current_user(
     security_scopes: SecurityScopes,
     token: str = Depends(oauth2_scheme),
-    db: AsyncSession = Depends(get_db)
+    db_gen = Depends(get_db)
 ) -> User:
     """
     Get the current user from the token.
@@ -75,6 +78,9 @@ async def get_current_user(
                     detail=f"Not enough permissions. Required scope: {scope}",
                     headers={"WWW-Authenticate": authenticate_value},
                 )
+        
+        # Get the database session from the generator
+        db = await get_session_from_generator(db_gen)
         
         # Get the user from the database
         result = await db.execute(select(User).filter(User.id == user_id))

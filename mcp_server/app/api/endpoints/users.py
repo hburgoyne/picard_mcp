@@ -2,6 +2,9 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from typing import List, Optional
+import asyncio
+
+from app.utils.db_utils import get_session_from_generator
 
 from app.db.session import get_db
 from app.models.user import User
@@ -14,11 +17,14 @@ router = APIRouter()
 @router.post("/", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 async def create_user(
     user: UserCreate,
-    db: AsyncSession = Depends(get_db)
+    db_gen = Depends(get_db)
 ):
     """
     Create a new user.
     """
+    # Get the database session from the generator
+    db = await get_session_from_generator(db_gen)
+    
     # Check if username already exists
     result = await db.execute(select(User).filter(User.username == user.username))
     existing_user = result.scalars().first()
@@ -64,12 +70,15 @@ async def read_users_me(
 @router.put("/me", response_model=UserResponse)
 async def update_user_me(
     user_update: UserUpdate,
-    db: AsyncSession = Depends(get_db),
+    db_gen = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     """
     Update current user.
     """
+    # Get the database session from the generator
+    db = await get_session_from_generator(db_gen)
+    
     # Update user fields
     if user_update.username is not None:
         # Check if username already exists

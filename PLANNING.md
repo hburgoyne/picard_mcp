@@ -28,7 +28,7 @@ This document outlines the step-by-step implementation plan for the Picard MCP p
 - [x] Create docker-compose.yml for local development
 - [x] Test Docker setup with basic applications
 
-## Phase 2: MCP Server Implementation (Core Functionality)
+## Phase 2: Initial Server and Client Implementation
 
 ### 2.1 Core Server Setup
 - [x] Set up FastAPI application structure
@@ -44,15 +44,59 @@ This document outlines the step-by-step implementation plan for the Picard MCP p
 - [x] Create database migrations
 - [x] Create unit tests for models
 
-### 2.3 OAuth 2.0 Implementation
+### 2.3 Basic Django Client Setup
+- [ ] Set up Django project structure
+- [ ] Configure settings and environment variables
+- [ ] Set up URL routing
+- [ ] Create simple base templates with Bootstrap
+
+### 2.4 Django User Management
+- [ ] Implement basic user registration
+- [ ] Implement user authentication
+- [ ] Implement minimal user profile
+- [ ] Create simple login/logout flow
+
+## Phase 3: OAuth 2.0 Implementation
+
+### 3.1 OAuth Core Setup
+- [ ] Set up OAuth routes and controller structure
+- [ ] Implement OAuth schema validation
+- [ ] Create OAuth error handling utilities
+- [ ] Implement basic OAuth security measures
+
+### 3.2 Client Registration
 - [ ] Implement client registration endpoint
+- [ ] Create secure client credentials generation
+- [ ] Implement client management system
+- [ ] Add client registration script for Django client
+
+### 3.3 Authorization Flow
 - [ ] Implement authorization endpoint
+- [ ] Create user consent page
+- [ ] Implement CSRF protection for OAuth flows
+- [ ] Add PKCE support
+
+### 3.4 Token Management
 - [ ] Implement token exchange endpoint
 - [ ] Implement token refresh endpoint
-- [ ] Implement token validation middleware
-- [ ] Set up basic scope-based permission system
+- [ ] Implement token validation and introspection
+- [ ] Create token storage and retrieval system
 
-### 2.4 Memory Management
+### 3.5 Django OAuth Client Implementation
+- [ ] Implement OAuth 2.0 client with PKCE
+- [ ] Create token storage in database
+- [ ] Implement token refresh logic
+- [ ] Set up basic error handling
+
+### 3.6 Permission System
+- [ ] Implement scope-based permission system
+- [ ] Set up middleware for resource protection
+- [ ] Create role-based access controls
+- [ ] Implement token blacklisting for revocation
+
+## Phase 4: Memory Management and Search
+
+### 4.1 Memory Management API
 - [ ] Implement memory creation endpoint
 - [ ] Implement memory retrieval endpoints
 - [ ] Implement memory update endpoint
@@ -60,78 +104,59 @@ This document outlines the step-by-step implementation plan for the Picard MCP p
 - [ ] Implement permission-based access control
 - [ ] Implement basic memory encryption at rest
 
-### 2.5 Vector Embedding and Search
+### 4.2 Vector Embedding and Search
 - [ ] Integrate OpenAI API for text embeddings using LangChain
 - [ ] Implement vector storage with pgvector
 - [ ] Implement basic semantic search functionality
 
-### 2.6 LLM Integration
+### 4.3 LLM Integration
 - [ ] Implement simple persona query functionality
 - [ ] Set up basic context management for LLM queries (using LangChain)
 - [ ] Implement memory-based query processing
 
-### 2.7 API Documentation
+### 4.4 API Documentation
 - [ ] Set up Swagger/OpenAPI documentation
 - [ ] Document essential endpoints with examples
 
-## Phase 3: Django Client Implementation (Minimal Testbed)
+## Phase 5: Django Client UI Implementation
 
-### 3.1 Core Application Setup
-- [ ] Set up Django project structure
-- [ ] Configure settings and environment variables
-- [ ] Set up URL routing
-- [ ] Create simple base templates with Bootstrap
-
-### 3.2 User Management
-- [ ] Implement basic user registration
-- [ ] Implement user authentication
-- [ ] Implement minimal user profile
-
-### 3.3 OAuth Client Implementation
-- [ ] Implement OAuth 2.0 client with PKCE
-- [ ] Create token storage in database
-- [ ] Implement token refresh logic
-- [ ] Set up basic error handling
-
-### 3.4 Memory Management UI
+### 5.1 Memory Management UI
 - [ ] Create simple memory creation form
 - [ ] Create basic memory listing page
 - [ ] Create simple memory editing form
 - [ ] Create memory deletion functionality
 - [ ] Implement basic permission toggle
 
-### 3.5 Search and Query UI
+### 5.2 Search and Query UI
 - [ ] Implement basic search form
 - [ ] Create simple persona query form
 - [ ] Implement basic results display
 
-### 3.6 API Integration
+### 5.3 API Integration
 - [ ] Create MCP server API client
 - [ ] Implement basic error handling for API calls
 
-## Phase 4: Testing (Essential Only)
+## Phase 6: Testing and Deployment
 
-### 4.1 MCP Server Tests
+### 6.1 MCP Server Tests
 - [ ] Write basic tests for critical endpoints
 - [ ] Test OAuth flow
 - [ ] Test core memory operations
 
-### 4.2 Django Client Tests
+### 6.2 Django Client Tests
 - [ ] Test OAuth client integration
 - [ ] Test basic memory operations
 
-### 4.3 End-to-End Tests
+### 6.3 End-to-End Tests
 - [ ] Create simple test script for system testing
 - [ ] Test OAuth flow from client to server
 - [ ] Test memory creation, retrieval, and querying
 
-## Phase 5: Deployment
-
-### 5.1 Local Deployment with Docker
+### 6.4 Local Deployment with Docker
 - [ ] Finalize docker-compose.yml
 - [ ] Test full system with Docker Compose
 
-### 5.2 Render Deployment
+### 6.5 Render Deployment
 - [ ] Create render.yaml blueprint
 - [ ] Configure environment variables for Render
 - [ ] Deploy MCP server to Render
@@ -143,10 +168,11 @@ This document outlines the step-by-step implementation plan for the Picard MCP p
 | Phase | Estimated AI Prompting Sessions | Dependencies |
 |-------|-------------------|--------------|
 | Phase 1: Project Setup | 2-3 prompts | None |
-| Phase 2: MCP Server | 1-2 prompts | Phase 1 |
-| Phase 3: Django Client | 3-5 prompts | Phase 1 |
-| Phase 4: Testing | 2-3 prompts | Phases 2 & 3 |
-| Phase 5: Deployment | 1-2 prompts | Phase 4 |
+| Phase 2: Initial Server and Client | 2-3 prompts | Phase 1 |
+| Phase 3: OAuth 2.0 Implementation | 3-5 prompts | Phase 2 |
+| Phase 4: Memory Management and Search | 2-3 prompts | Phase 3 |
+| Phase 5: Django Client UI | 2-3 prompts | Phase 4 |
+| Phase 6: Testing and Deployment | 2-3 prompts | Phase 5 |
 
 ## Getting Started
 
@@ -353,5 +379,6 @@ This document outlines the step-by-step implementation plan for the Picard MCP p
 
 ## Next Steps
 
-1. Complete Phase 1: Project Setup and Configuration
-2. Begin implementation of MCP server core functionality
+1. Complete Basic Django Client Setup (Phase 2.3)
+2. Implement Django User Management (Phase 2.4)
+3. Begin OAuth 2.0 Core Setup (Phase 3.1)

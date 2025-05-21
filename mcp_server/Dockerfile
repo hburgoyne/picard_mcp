@@ -29,6 +29,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy application code
 COPY . .
 
+# Make the entrypoint script executable
+RUN chmod +x /app/scripts/entrypoint.sh
+
 # Change ownership of the application code
 RUN chown -R app:app /app
 
@@ -37,6 +40,9 @@ USER app
 
 # Expose port
 EXPOSE 8000
+
+# Set entrypoint
+ENTRYPOINT ["/app/scripts/entrypoint.sh"]
 
 # Command for different environments
 CMD if [ "$ENVIRONMENT" = "production" ]; then \

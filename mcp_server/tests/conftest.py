@@ -35,6 +35,14 @@ def db_session():
     This fixture creates all tables in a test database, yields a
     session for tests to use, and cleans up after the test is done.
     """
+    # Ensure pgvector extension is created
+    try:
+        with test_engine.connect() as conn:
+            conn.execute("CREATE EXTENSION IF NOT EXISTS vector")
+            conn.commit()
+    except Exception as e:
+        print(f"Warning: Could not create pgvector extension: {e}")
+    
     # Create all tables
     Base.metadata.create_all(bind=test_engine)
     

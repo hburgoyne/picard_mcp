@@ -72,12 +72,54 @@ These manual tests verify that the environment variables are properly loaded fro
    ```
    Verify that all required environment variables are loaded from the django_client/.env file.
 
+## Phase 2: Database Model Tests
+
+### Model Unit Tests
+
+We've implemented comprehensive tests for all database models:
+
+1. **User Model Tests**:
+   - Test user creation and retrieval
+   - Verify unique constraints for email and username
+   - Confirm default values are set correctly
+
+2. **Memory Model Tests**:
+   - Test memory creation and association with users
+   - Test vector embedding storage (using pgvector)
+   - Verify expiration date logic and the is_expired property
+
+3. **OAuth Models Tests**:
+   - Test OAuthClient creation and verification
+   - Test AuthorizationCode creation and expiration
+   - Test Token creation, retrieval, and expiration checking
+
+### Running Model Tests
+
+```bash
+# Run the model tests
+docker exec -it picard_mcp-mcp_server pytest -xvs tests/test_models.py
+```
+
+### Automated Test Database Setup
+
+The test database is automatically set up with:
+
+1. An entrypoint script that:
+   - Creates the test database (`picard_mcp_test`) if it doesn't exist
+   - Enables the pgvector extension in both main and test databases
+   - Runs migrations to initialize schema
+
+2. Test fixtures in `conftest.py` that:
+   - Configure a separate test database connection
+   - Create and drop tables for each test
+   - Ensure the pgvector extension is available
+
 ## Future Testing Plans
 
 In subsequent phases, we will implement more comprehensive tests:
 
-1. **Unit Tests**: For individual components and functions
-2. **Integration Tests**: For API endpoints and database interactions
+1. **API Tests**: For testing the REST endpoints
+2. **OAuth Flow Tests**: For testing the complete OAuth 2.0 authentication flow
 3. **End-to-End Tests**: For complete user workflows
 
 These tests will be documented as they are implemented in future phases.

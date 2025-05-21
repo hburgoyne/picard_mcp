@@ -367,6 +367,34 @@ The core functionality of Picard MCP revolves around memory management with the 
     }
     ```
 
+## Testing
+
+The system comes with a comprehensive test suite that covers database models and API endpoints.
+
+### Running Tests
+
+To run the tests within the Docker container, use the following command:
+
+```bash
+# Run all tests
+docker exec -it picard_mcp-mcp_server pytest
+
+# Run specific test modules
+docker exec -it picard_mcp-mcp_server pytest -xvs tests/test_models.py
+
+# Run tests with coverage report
+docker exec -it picard_mcp-mcp_server pytest --cov=app tests/
+```
+
+The test suite includes:
+- Model tests: Validating database models (User, Memory, OAuth)
+- API tests: Testing the REST endpoints and OAuth flow
+- Vector embedding tests: Ensuring vector storage and search functionality
+
+### Test Database
+
+The test suite uses a separate test database (`picard_mcp_test`), which is automatically created and configured by the container's entrypoint script. This ensures that tests don't affect the main application database.
+
 ## Setup and Deployment
 
 ### Prerequisites

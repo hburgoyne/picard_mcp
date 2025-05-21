@@ -1,0 +1,98 @@
+version: '3.8'
+
+services:
+  # PostgreSQL database for MCP server with pgvector extension
+  db-mcp:
+    image: ankane/pgvector:latest
+    container_name: picard_mcp-db-mcp
+    volumes:
+      - postgres_data_mcp:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+    ports:
+      - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # PostgreSQL database for Django client
+  db-django:
+    image: postgres:14
+    container_name: picard_mcp-db-django
+    volumes:
+      - postgres_data_django:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_DB=${DB_NAME}
+    ports:
+      - "5434:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # MCP server
+  mcp_server:
+    build: ./mcp_server
+    container_name: picard_mcp-mcp_server
+    volumes:
+      - ./mcp_server:/app
+    ports:
+      - "8001:8000"
+    depends_on:
+      db-mcp:
+        condition: service_healthy
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_HOST=db-mcp
+      - POSTGRES_PORT=5432
+      - MCP_SERVER_NAME=${MCP_SERVER_NAME}
+      - MCP_SERVER_HOST=${MCP_SERVER_HOST}
+      - MCP_SERVER_PORT=${MCP_SERVER_PORT}
+      - MCP_ISSUER_URL=${MCP_ISSUER_URL}
+      - OAUTH_CLIENT_ID=${OAUTH_CLIENT_ID}
+      - OAUTH_CLIENT_SECRET=${OAUTH_CLIENT_SECRET}
+      - OAUTH_REDIRECT_URI=${OAUTH_REDIRECT_URI}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+  # Django client
+  django_client:
+    build: ./django_client
+    container_name: picard_mcp-django_client
+    volumes:
+      - ./django_client:/app
+    ports:
+      - "8000:8000"
+    depends_on:
+      db-django:
+        condition: service_healthy
+      mcp_server:
+        condition: service_started
+    environment:
+      - DEBUG=${DEBUG}
+      - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY}
+      - DB_NAME=${DB_NAME}
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_HOST=db-django
+      - DB_PORT=5432
+      - MCP_SERVER_URL=${MCP_SERVER_URL}
+      - MCP_SERVER_INTERNAL_URL=${MCP_SERVER_INTERNAL_URL}
+      - OAUTH_CLIENT_ID=${OAUTH_CLIENT_ID}
+      - OAUTH_CLIENT_SECRET=${OAUTH_CLIENT_SECRET}
+      - OAUTH_REDIRECT_URI=${OAUTH_REDIRECT_URI}
+      - OAUTH_SCOPES=${OAUTH_SCOPES}
+    command: python manage.py runserver 0.0.0.0:8000
+
+volumes:
+  postgres_data_mcp:
+  postgres_data_django:

@@ -1,0 +1,122 @@
+{% extends 'base.html' %}
+
+{% block title %}Picard MCP - Dashboard{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-12">
+        <h1>Dashboard</h1>
+        <p class="lead">Manage your memories and MCP connection.</p>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h3>MCP Server Connection</h3>
+            </div>
+            <div class="card-body">
+                {% if connected %}
+                    {% if token_expired %}
+                        <div class="alert alert-warning">
+                            <p>Your connection to the MCP server has expired.</p>
+                            <a href="{% url 'refresh_token' %}" class="btn btn-warning">Refresh Connection</a>
+                        </div>
+                    {% else %}
+                        <div class="alert alert-success">
+                            <p>You are connected to the MCP server.</p>
+                            <a href="{% url 'refresh_token' %}" class="btn btn-outline-success">Refresh Connection</a>
+                        </div>
+                    {% endif %}
+                {% else %}
+                    <div class="alert alert-info">
+                        <p>You are not connected to the MCP server. Connect to create and manage memories.</p>
+                        <a href="{% url 'oauth_authorize' %}" class="btn btn-primary">Connect to MCP Server</a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h3>Your Memories</h3>
+                <div>
+                    <a href="{% url 'create_memory' %}" class="btn btn-primary">Create Memory</a>
+                    <a href="{% url 'sync_memories' %}" class="btn btn-secondary">Sync Memories</a>
+                </div>
+            </div>
+            <div class="card-body">
+                {% if memories %}
+                    <div class="row">
+                        {% for memory in memories %}
+                            <div class="col-md-6">
+                                <div class="card memory-card {% if memory.is_expired %}expired{% endif %} {{ memory.permission }}">
+                                    <div class="card-header d-flex justify-content-between align-items-center">
+                                        <span>
+                                            <span class="badge {% if memory.permission == 'private' %}bg-danger{% else %}bg-success{% endif %}">
+                                                {{ memory.permission|title }}
+                                            </span>
+                                            {% if memory.is_expired %}
+                                                <span class="badge bg-warning">Expired</span>
+                                            {% endif %}
+                                        </span>
+                                        <div>
+                                            <a href="{% url 'edit_memory' memory.id %}" class="btn btn-sm btn-outline-primary">Edit</a>
+                                            <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteModal{{ memory.id }}">Delete</button>
+                                        </div>
+                                    </div>
+                                    <div class="card-body">
+                                        <p class="card-text">{{ memory.text }}</p>
+                                        <p class="card-text">
+                                            <small class="text-muted">
+                                                Created: {{ memory.created_at|date:"M d, Y H:i" }}
+                                                {% if memory.expiration_date %}
+                                                    <br>Expires: {{ memory.expiration_date|date:"M d, Y H:i" }}
+                                                {% endif %}
+                                            </small>
+                                        </p>
+                                    </div>
+                                </div>
+                                
+                                <!-- Delete Modal -->
+                                <div class="modal fade" id="deleteModal{{ memory.id }}" tabindex="-1" aria-labelledby="deleteModalLabel{{ memory.id }}" aria-hidden="true">
+                                    <div class="modal-dialog">
+                                        <div class="modal-content">
+                                            <div class="modal-header">
+                                                <h5 class="modal-title" id="deleteModalLabel{{ memory.id }}">Confirm Delete</h5>
+                                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                            </div>
+                                            <div class="modal-body">
+                                                <p>Are you sure you want to delete this memory?</p>
+                                                <p><strong>{{ memory.text|truncatechars:100 }}</strong></p>
+                                                <p>This action cannot be undone.</p>
+                                            </div>
+                                            <div class="modal-footer">
+                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                                <form method="post" action="{% url 'delete_memory' memory.id %}">
+                                                    {% csrf_token %}
+                                                    <button type="submit" class="btn btn-danger">Delete</button>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="alert alert-info">
+                        <p>You don't have any memories yet.</p>
+                        <a href="{% url 'create_memory' %}" class="btn btn-primary">Create Memory</a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

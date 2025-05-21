@@ -1,0 +1,40 @@
+{% extends 'base.html' %}
+
+{% block title %}Picard MCP - Home{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8 offset-md-2 text-center">
+        <h1 class="display-4 mb-4">Welcome to Picard MCP</h1>
+        <p class="lead">A complete memory management system built on the Model Context Protocol (MCP) standard.</p>
+        
+        <div class="card mt-5">
+            <div class="card-body">
+                <h2 class="card-title">About Picard MCP</h2>
+                <p class="card-text">
+                    Picard MCP enables users to store, retrieve, and manage their memories while controlling access permissions, 
+                    and allows for semantic search and AI-powered queries based on stored memories.
+                </p>
+                
+                <h3 class="mt-4">Key Features</h3>
+                <ul class="list-group list-group-flush text-start">
+                    <li class="list-group-item">Secure memory storage with permission controls</li>
+                    <li class="list-group-item">Vector embeddings for semantic search capabilities</li>
+                    <li class="list-group-item">OAuth 2.0 authentication and authorization</li>
+                    <li class="list-group-item">Persona-based querying using stored memories</li>
+                    <li class="list-group-item">Memory expiration and lifecycle management</li>
+                </ul>
+            </div>
+        </div>
+        
+        <div class="mt-5">
+            {% if user.is_authenticated %}
+                <a href="{% url 'dashboard' %}" class="btn btn-primary btn-lg">Go to Dashboard</a>
+            {% else %}
+                <a href="{% url 'login' %}" class="btn btn-primary btn-lg">Login</a>
+                <p class="mt-3">Don't have an account? Please contact an administrator to create one for you.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

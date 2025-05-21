@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}Picard MCP - Search Memories{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8 offset-md-2">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h3 class="mb-0">Search Memories</h3>
+            </div>
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+                    {{ form|crispy }}
+                    <div class="mt-3">
+                        <button type="submit" class="btn btn-primary">Search</button>
+                        <a href="{% url 'dashboard' %}" class="btn btn-secondary">Back to Dashboard</a>
+                    </div>
+                </form>
+            </div>
+            <div class="card-footer">
+                <div class="alert alert-info mb-0">
+                    <h5>About Semantic Search</h5>
+                    <p>This search uses vector embeddings to find memories based on meaning, not just keywords. You can search for concepts and ideas, and the system will return the most semantically similar memories.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

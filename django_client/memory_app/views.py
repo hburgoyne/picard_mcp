@@ -16,8 +16,8 @@ import base64
 from datetime import datetime, timedelta
 from urllib.parse import urlencode
 
-from .models import OAuthToken, Memory
-from .forms import MemoryForm, MemorySearchForm, UserQueryForm, UserRegistrationForm
+from .models import OAuthToken, Memory, UserProfile
+from .forms import MemoryForm, MemorySearchForm, UserQueryForm, UserRegistrationForm, UserProfileForm
 
 def generate_code_verifier():
     """Generate a code verifier for PKCE."""
@@ -542,3 +542,19 @@ def register(request):
     else:
         form = UserRegistrationForm()
     return render(request, 'register.html', {'form': form})
+
+@login_required
+def profile_view(request):
+    """View user profile."""
+    user_profile, created = UserProfile.objects.get_or_create(user=request.user)
+    
+    if request.method == 'POST':
+        form = UserProfileForm(request.POST, instance=user_profile)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Your profile was successfully updated!')
+            return redirect('profile')
+    else:
+        form = UserProfileForm(instance=user_profile)
+    
+    return render(request, 'memory_app/profile.html', {'form': form})

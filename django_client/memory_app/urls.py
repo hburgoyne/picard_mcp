@@ -12,4 +12,5 @@ urlpatterns = [
     path('memories/search/', views.search_memories, name='search_memories'),
     path('memories/sync/', views.sync_memories, name='sync_memories'),
     path('query/user/', views.query_user, name='query_user'),
+    path('profile/', views.profile_view, name='profile'),
 ]

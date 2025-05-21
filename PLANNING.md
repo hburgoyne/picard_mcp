@@ -52,9 +52,9 @@ This document outlines the step-by-step implementation plan for the Picard MCP p
 
 ### 2.4 Django User Management
 - [x] Implement basic user registration
-- [ ] Implement user authentication
-- [ ] Implement minimal user profile
-- [ ] Create simple login/logout flow
+- [x] Implement user authentication
+- [x] Implement minimal user profile
+- [x] Create simple login/logout flow
 
 ## Phase 3: OAuth 2.0 Implementation
 

@@ -72,11 +72,9 @@ These manual tests verify that the environment variables are properly loaded fro
    ```
    Verify that all required environment variables are loaded from the django_client/.env file.
 
-## Future Testing Plans
-
 ## Phase 2: Database Model Tests
 
-### Model Unit Tests
+### MCP Server Model Unit Tests
 
 We have implemented unit tests for the database models created in Phase 2.2:
 
@@ -96,19 +94,66 @@ We have implemented unit tests for the database models created in Phase 2.2:
    - Test token creation and expiration
    - Test relationships between models
 
-### Running the Model Tests
+### Django Client Tests
 
-To run the model tests, use the provided script:
+We have implemented tests for the Django client functionality, focusing on user authentication and profile management:
+
+1. **User Authentication Tests** (`test_user_auth.py`):
+   - Test user registration form validation
+   - Test user registration view
+   - Test automatic creation of user profiles
+
+2. **User Profile Tests** (`test_user_profile.py`):
+   - Test profile view rendering
+   - Test profile form validation
+   - Test profile update functionality
+
+### Running the MCP Server Tests
+
+To run the MCP server model tests, use the provided script or command:
 
 ```bash
 # Make sure the Docker containers are running
 docker-compose up -d
 
-# Run the model tests
-./mcp_server/run_model_tests.sh
+# Run the MCP server tests using pytest
+docker-compose exec mcp_server pytest -xvs
 ```
 
-The tests will use a separate test database (`picard_mcp_test`) that is created and destroyed during the test run, ensuring that your development database remains untouched.
+### Running the Django Client Tests
+
+To run the Django client tests:
+
+```bash
+# Make sure the Docker containers are running
+docker-compose up -d
+
+# First, collect static files (only needed initially or after changes to static files)
+docker exec picard_mcp-django_client python manage.py collectstatic --noinput
+
+# Then run the Django tests
+docker exec picard_mcp-django_client python manage.py test
+```
+
+The Django test runner creates a test database for the duration of the tests, ensuring that your development database remains untouched.
+
+### Running All Tests
+
+To run all tests (both MCP server and Django client), you can run these commands in sequence:
+
+```bash
+# Make sure the Docker containers are running
+docker-compose up -d
+
+# Run MCP server tests
+docker-compose exec mcp_server pytest -xvs
+
+# Run Django client tests (collect static files first if needed)
+docker exec picard_mcp-django_client python manage.py collectstatic --noinput
+docker exec picard_mcp-django_client python manage.py test
+```
+
+This allows you to see the results of each test suite separately and take action accordingly.
 
 ## Future Testing Plans
 

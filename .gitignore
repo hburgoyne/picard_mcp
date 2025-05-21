@@ -49,3 +49,7 @@ logs/
 # Database
 *.sqlite3
 *.db
+
+# Static files
+staticfiles/
+django_client/staticfiles/

@@ -14,6 +14,9 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 from app.models import BaseModel
 from app.core.config import settings
 
+# Import pgvector for vector embeddings support
+import pgvector.sqlalchemy
+
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config

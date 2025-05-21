@@ -1,0 +1,13 @@
+# filepath: /Users/hayden/Documents/Github/picard_mcp/mcp_server/requirements-dev.txt
+# Base requirements
+-r requirements.txt
+
+# Testing dependencies
+pytest==7.3.1
+pytest-cov==4.1.0
+httpx==0.24.1
+
+# Development tools
+black==23.3.0
+flake8==6.0.0
+isort==5.12.0

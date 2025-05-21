@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # PostgreSQL database for MCP server with pgvector extension
   db-mcp:
@@ -41,6 +39,7 @@ services:
     container_name: picard_mcp-mcp_server
     volumes:
       - ./mcp_server:/app
+      - ./logs:/app/logs
     ports:
       - "8001:8000"
     depends_on:
@@ -51,7 +50,8 @@ services:
     environment:
       - POSTGRES_HOST=db-mcp
       - POSTGRES_PORT=5432
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+      - LOG_LEVEL=INFO
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload --log-level info
 
   # Django client
   django_client:

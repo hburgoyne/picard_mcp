@@ -35,6 +35,8 @@ The Picard MCP system follows a client-server architecture with the following co
 1. **MCP Server**: Core backend service that handles memory storage, retrieval, and AI operations
    - Built with FastAPI (FastMCP) for high performance and async support
    - Uses PostgreSQL with pgvector extension for vector storage and semantic search
+   - Implements data models for Users, Memories (with vector embeddings), OAuth Clients, and Tokens
+   - Uses SQLAlchemy ORM with Alembic migrations for database management
    - Implements OAuth 2.0 for secure authentication and authorization
    - Integrates with OpenAI API for memory embeddings (text-embedding-3-small)
    - Uses LangChain for LLM operations when available
@@ -97,6 +99,29 @@ The system implements OAuth 2.0 Authorization Code flow with PKCE (Proof Key for
    - MCP server enforces scope-based permissions for each endpoint
    - When the access token expires, client uses the refresh token to obtain a new one via the `/token` endpoint with `grant_type=refresh_token`
    - If refresh token is expired or invalid, client must restart the authorization flow
+
+### Database Models
+
+The MCP Server uses SQLAlchemy ORM with the following key models:
+
+1. **User Model**:
+   - Stores user information with email, username, and hashed password
+   - Includes boolean flags for account status (is_active, is_superuser)
+   - Linked to memories through one-to-many relationship
+
+2. **Memory Model with Vector Storage**:
+   - Uses pgvector extension to store and query vector embeddings (1536 dimensions)
+   - Supports text content with optional encryption
+   - Includes permission controls (private/public)
+   - Supports expiration dates for time-limited memories
+   - Associated with users through foreign key relationship
+
+3. **OAuth Models**:
+   - **OAuthClient**: Stores client application details, including client_id, client_secret, redirect URIs, and authorized scopes
+   - **AuthorizationCode**: Manages temporary authorization codes with PKCE support
+   - **Token**: Stores access and refresh tokens with expiration tracking
+
+The system uses Alembic for database migrations, ensuring schema versioning and easy updates.
 
 ### Memory Management System
 

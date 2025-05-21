@@ -37,11 +37,11 @@ This document outlines the step-by-step implementation plan for the Picard MCP p
 - [x] Set up minimal logging
 
 ### 2.2 Database Models
-- [ ] Implement User model
-- [ ] Implement Memory model with vector storage
-- [ ] Implement OAuth Client model
-- [ ] Implement Token model
-- [ ] Create database migrations
+- [x] Implement User model
+- [x] Implement Memory model with vector storage
+- [x] Implement OAuth Client model
+- [x] Implement Token model
+- [x] Create database migrations
 
 ### 2.3 OAuth 2.0 Implementation
 - [ ] Implement client registration endpoint
@@ -60,13 +60,13 @@ This document outlines the step-by-step implementation plan for the Picard MCP p
 - [ ] Implement basic memory encryption at rest
 
 ### 2.5 Vector Embedding and Search
-- [ ] Integrate OpenAI API for text embeddings
+- [ ] Integrate OpenAI API for text embeddings using LangChain
 - [ ] Implement vector storage with pgvector
 - [ ] Implement basic semantic search functionality
 
 ### 2.6 LLM Integration
 - [ ] Implement simple persona query functionality
-- [ ] Set up basic context management for LLM queries
+- [ ] Set up basic context management for LLM queries (using LangChain)
 - [ ] Implement memory-based query processing
 
 ### 2.7 API Documentation

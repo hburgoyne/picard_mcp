@@ -110,17 +110,50 @@ For Phase 2, we have implemented the following tests:
 
 ### Running Tests in Docker
 
-All tests should be run inside the Docker container to ensure they use the same environment as the application. Here's how to run the tests:
+All tests should be run inside the Docker container to ensure they use the same environment as the application. Follow these steps to set up and run the tests:
+
+#### 1. Ensure all dependencies are installed
+
+First, make sure the Docker container has all the required dependencies:
+
+```bash
+# Install required dependencies in the container
+docker exec picard_mcp-mcp_server pip install httpx email-validator "pydantic[email]" authlib pytest pytest-asyncio pytest-cov
+```
+
+#### 2. Run the tests
 
 ```bash
 # Run all tests in the MCP server container
-docker exec picard_mcp-mcp_server pytest /app/tests/ -v
+docker exec picard_mcp-mcp_server python -m pytest /app/tests/ -v
 
 # Run specific test file
-docker exec picard_mcp-mcp_server pytest /app/tests/test_health.py -v
+docker exec picard_mcp-mcp_server python -m pytest /app/tests/test_health.py -v
 
 # Run with coverage report
-docker exec picard_mcp-mcp_server pytest /app/tests/ --cov=app -v
+docker exec picard_mcp-mcp_server python -m pytest /app/tests/ --cov=app -v
+```
+
+#### 3. Troubleshooting
+
+If you encounter dependency issues, you can check the logs:
+
+```bash
+# View the logs of the MCP server container
+docker-compose logs mcp_server
+```
+
+If you need to rebuild the container with updated dependencies:
+
+```bash
+# Stop the existing containers
+docker-compose down
+
+# Rebuild the containers with no cache
+docker-compose build --no-cache mcp_server
+
+# Start the containers
+docker-compose up -d
 ```
 
 ### Test Database Setup

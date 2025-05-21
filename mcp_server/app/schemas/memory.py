@@ -1,7 +1,16 @@
-from pydantic import BaseModel, UUID4, Field, validator
+from pydantic import BaseModel, UUID4, Field, field_validator
 from typing import Optional, List, Union
 from datetime import datetime
 import uuid
+
+def validate_permission(v: str) -> str:
+    """Validate permission value."""
+    allowed_permissions = ["private", "public"]
+    if v is None:
+        return v
+    if v not in allowed_permissions:
+        raise ValueError(f"Permission must be one of: {', '.join(allowed_permissions)}")
+    return v
 
 class MemoryBase(BaseModel):
     """Base schema for memory data."""
@@ -9,13 +18,10 @@ class MemoryBase(BaseModel):
     permission: str = "private"  # Default to private
     expiration_date: Optional[datetime] = None
 
-    @validator("permission")
+    @field_validator("permission")
     def validate_permission(cls, v):
         """Validate permission value."""
-        allowed_permissions = ["private", "public"]
-        if v not in allowed_permissions:
-            raise ValueError(f"Permission must be one of: {', '.join(allowed_permissions)}")
-        return v
+        return validate_permission(v)
 
 class MemoryCreate(MemoryBase):
     """Schema for creating a new memory."""
@@ -28,15 +34,10 @@ class MemoryUpdate(BaseModel):
     expiration_date: Optional[datetime] = None
     encrypt: Optional[bool] = None  # Whether to encrypt the memory text
 
-    @validator("permission")
+    @field_validator("permission")
     def validate_permission(cls, v):
         """Validate permission value."""
-        if v is None:
-            return v
-        allowed_permissions = ["private", "public"]
-        if v not in allowed_permissions:
-            raise ValueError(f"Permission must be one of: {', '.join(allowed_permissions)}")
-        return v
+        return validate_permission(v)
 
 class MemoryInDBBase(MemoryBase):
     """Base schema for memory data from database."""
@@ -71,13 +72,10 @@ class MemoryPermissionUpdate(BaseModel):
     memory_id: UUID4
     permission: str
 
-    @validator("permission")
+    @field_validator("permission")
     def validate_permission(cls, v):
         """Validate permission value."""
-        allowed_permissions = ["private", "public"]
-        if v not in allowed_permissions:
-            raise ValueError(f"Permission must be one of: {', '.join(allowed_permissions)}")
-        return v
+        return validate_permission(v)
 
 class MemoryWithScore(BaseModel):
     """Schema for memory with similarity score."""

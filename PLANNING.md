@@ -111,9 +111,9 @@ This document outlines the step-by-step implementation plan for the Picard MCP p
 ## Phase 4: Testing (Essential Only)
 
 ### 4.1 MCP Server Tests
-- [ ] Write basic tests for critical endpoints
-- [ ] Test OAuth flow
-- [ ] Test core memory operations
+- [x] Write basic tests for critical endpoints
+- [x] Test OAuth flow
+- [x] Test core memory operations
 
 ### 4.2 Django Client Tests
 - [ ] Test OAuth client integration

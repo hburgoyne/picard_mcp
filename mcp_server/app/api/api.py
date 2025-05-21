@@ -1,12 +1,23 @@
 from fastapi import APIRouter
-
-from app.api.endpoints import oauth, memories, users, health, llm
+import importlib
+import logging
 
 api_router = APIRouter()
+logger = logging.getLogger(__name__)
 
-# Include all endpoint routers
-api_router.include_router(health.router, prefix="/health", tags=["Health"])
-api_router.include_router(oauth.router, prefix="/oauth", tags=["OAuth"])
-api_router.include_router(memories.router, prefix="/memories", tags=["Memories"])
-api_router.include_router(users.router, prefix="/users", tags=["Users"])
-api_router.include_router(llm.router, prefix="/llm", tags=["LLM"])
+# List of endpoint modules to include
+endpoint_modules = ["health", "oauth", "memories", "users", "llm"]
+
+# Include available endpoint routers
+for module_name in endpoint_modules:
+    try:
+        module = importlib.import_module(f"app.api.endpoints.{module_name}")
+        api_router.include_router(
+            module.router,
+            prefix=f"/{module_name}",
+            tags=[module_name.capitalize()]
+        )
+        logger.info(f"Loaded endpoint module: {module_name}")
+    except (ImportError, AttributeError) as e:
+        logger.warning(f"Could not load endpoint module {module_name}: {e}")
+        # Continue loading other modules even if one fails

@@ -1,4 +1,4 @@
-from pydantic import BaseModel, UUID4, Field, validator, HttpUrl
+from pydantic import BaseModel, UUID4, Field, field_validator, HttpUrl, validator
 from typing import Optional, List, Union
 from datetime import datetime
 import uuid
@@ -10,14 +10,10 @@ class OAuthClientBase(BaseModel):
     scopes: List[str]
     is_confidential: bool = True
 
-    @validator("scopes")
+    @field_validator("scopes")
     def validate_scopes(cls, v):
         """Validate scope values."""
-        allowed_scopes = ["memories:read", "memories:write", "memories:admin"]
-        for scope in v:
-            if scope not in allowed_scopes:
-                raise ValueError(f"Scope must be one of: {', '.join(allowed_scopes)}")
-        return v
+        return validate_scopes(v)
 
 class OAuthClientCreate(OAuthClientBase):
     """Schema for creating a new OAuth client."""
@@ -30,16 +26,12 @@ class OAuthClientUpdate(BaseModel):
     scopes: Optional[List[str]] = None
     is_confidential: Optional[bool] = None
 
-    @validator("scopes")
+    @field_validator("scopes")
     def validate_scopes(cls, v):
         """Validate scope values."""
         if v is None:
             return v
-        allowed_scopes = ["memories:read", "memories:write", "memories:admin"]
-        for scope in v:
-            if scope not in allowed_scopes:
-                raise ValueError(f"Scope must be one of: {', '.join(allowed_scopes)}")
-        return v
+        return validate_scopes(v)
 
 class OAuthClientInDBBase(OAuthClientBase):
     """Base schema for OAuth client data from database."""
@@ -78,19 +70,15 @@ class AuthorizationRequest(BaseModel):
     code_challenge: Optional[str] = None
     code_challenge_method: Optional[str] = None
 
-    @validator("response_type")
+    @field_validator("response_type")
     def validate_response_type(cls, v):
         """Validate response_type value."""
-        if v != "code":
-            raise ValueError("response_type must be 'code'")
-        return v
+        return validate_response_type(v)
 
-    @validator("code_challenge_method")
+    @field_validator("code_challenge_method")
     def validate_code_challenge_method(cls, v):
         """Validate code_challenge_method value."""
-        if v is not None and v != "S256":
-            raise ValueError("code_challenge_method must be 'S256'")
-        return v
+        return validate_code_challenge_method(v)
 
 class TokenRequest(BaseModel):
     """Schema for OAuth token request."""
@@ -102,13 +90,10 @@ class TokenRequest(BaseModel):
     code_verifier: Optional[str] = None
     refresh_token: Optional[str] = None
 
-    @validator("grant_type")
+    @field_validator("grant_type")
     def validate_grant_type(cls, v):
         """Validate grant_type value."""
-        allowed_grant_types = ["authorization_code", "refresh_token"]
-        if v not in allowed_grant_types:
-            raise ValueError(f"grant_type must be one of: {', '.join(allowed_grant_types)}")
-        return v
+        return validate_grant_type(v)
 
 class TokenResponse(BaseModel):
     """Schema for OAuth token response."""

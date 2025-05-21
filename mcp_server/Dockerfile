@@ -15,8 +15,8 @@ COPY requirements.txt .
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Install test dependencies
-RUN pip install --no-cache-dir pytest pytest-asyncio pytest-cov
+# Make sure all dependencies are properly installed
+RUN pip install --no-cache-dir "pydantic[email]" email-validator httpx starlette-oauth2 pytest pytest-asyncio pytest-cov
 
 # Copy application code
 COPY . .

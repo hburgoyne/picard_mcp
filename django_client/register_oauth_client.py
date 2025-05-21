@@ -11,7 +11,8 @@ def register_oauth_client():
     load_dotenv()
     
     # Get MCP server URL
-    mcp_server_url = os.getenv('MCP_SERVER_INTERNAL_URL', 'http://mcp_server:8000')
+    # Use localhost with external port (8001) when running from host
+    mcp_server_url = os.getenv('MCP_SERVER_URL', 'http://localhost:8001')
     
     # Prepare client registration data
     client_data = {
@@ -27,7 +28,7 @@ def register_oauth_client():
     try:
         # Send registration request to MCP server
         response = requests.post(
-            f"{mcp_server_url}/register",
+            f"{mcp_server_url}/api/oauth/register",
             json=client_data,
             headers={'Content-Type': 'application/json'}
         )

@@ -145,6 +145,7 @@ class IntrospectionResponse(BaseModel):
     iat: Optional[int] = None
     code_verifier: Optional[str] = None
     refresh_token: Optional[str] = None
+    grant_type: Optional[str] = None
 
     @validator("grant_type")
     def validate_grant_type(cls, v):

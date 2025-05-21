@@ -6,7 +6,7 @@ This file contains fixtures that are available to all tests.
 import os
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 from app.main import app
 from app.db.session import Base, get_db
@@ -17,6 +17,16 @@ TEST_DATABASE_URL = settings.DATABASE_URL.replace(settings.POSTGRES_DB, f"{setti
 
 # Create the test engine
 test_engine = create_engine(TEST_DATABASE_URL)
+
+# Create the pgvector extension in the test database if it doesn't exist
+def create_pgvector_extension():
+    """Create the pgvector extension in the test database."""
+    conn = test_engine.connect()
+    try:
+        conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
+        conn.commit()
+    finally:
+        conn.close()
 
 # Create the test SessionLocal
 TestSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=test_engine)
@@ -35,6 +45,9 @@ def db_session():
     This fixture creates all tables in a test database, yields a
     session for tests to use, and cleans up after the test is done.
     """
+    # Create pgvector extension
+    create_pgvector_extension()
+    
     # Create all tables
     Base.metadata.create_all(bind=test_engine)
     

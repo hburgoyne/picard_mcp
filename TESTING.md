@@ -74,9 +74,47 @@ These manual tests verify that the environment variables are properly loaded fro
 
 ## Future Testing Plans
 
+## Phase 2: Database Model Tests
+
+### Model Unit Tests
+
+We have implemented unit tests for the database models created in Phase 2.2:
+
+1. **User Model Tests** (`test_models_user.py`):
+   - Test user creation with default values
+   - Test unique constraints (email, username)
+
+2. **Memory Model Tests** (`test_models_memory.py`):
+   - Test memory creation with default values
+   - Test the expiration date functionality
+   - Test vector embeddings storage
+   - Test user-memory relationships
+
+3. **OAuth Model Tests** (`test_models_oauth.py`):
+   - Test OAuth client creation
+   - Test authorization code creation and expiration
+   - Test token creation and expiration
+   - Test relationships between models
+
+### Running the Model Tests
+
+To run the model tests, use the provided script:
+
+```bash
+# Make sure the Docker containers are running
+docker-compose up -d
+
+# Run the model tests
+./mcp_server/run_model_tests.sh
+```
+
+The tests will use a separate test database (`picard_mcp_test`) that is created and destroyed during the test run, ensuring that your development database remains untouched.
+
+## Future Testing Plans
+
 In subsequent phases, we will implement more comprehensive tests:
 
-1. **Unit Tests**: For individual components and functions
+1. **Additional Unit Tests**: For services and utilities
 2. **Integration Tests**: For API endpoints and database interactions
 3. **End-to-End Tests**: For complete user workflows
 

@@ -42,6 +42,7 @@ This document outlines the step-by-step implementation plan for the Picard MCP p
 - [x] Implement OAuth Client model
 - [x] Implement Token model
 - [x] Create database migrations
+- [x] Create unit tests for models
 
 ### 2.3 OAuth 2.0 Implementation
 - [ ] Implement client registration endpoint

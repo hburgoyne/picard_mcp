@@ -20,8 +20,8 @@ RUN addgroup --system app && adduser --system --group app
 # Create logs directory with appropriate permissions
 RUN mkdir -p /app/logs && chown -R app:app /app/logs
 
-# Copy requirements files
-COPY requirements.txt requirements-dev.txt ./
+# Copy requirements file
+COPY requirements.txt ./
 
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt

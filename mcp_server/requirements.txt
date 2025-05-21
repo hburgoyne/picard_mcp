@@ -16,10 +16,10 @@ openai==0.28.0
 langchain==0.0.267
 cryptography==41.0.3
 pydantic-settings==2.0.3
-authlib==1.2.1
-email-validator==2.0.0
+# Using a flexible version of Authlib to avoid dependency conflicts
+authlib>=0.15.0,<0.16.0
+email-validator==2.0.0.post2
 httpx==0.24.1
-starlette-oauth2==0.1.0
 
 # Testing dependencies
 pytest==7.3.1

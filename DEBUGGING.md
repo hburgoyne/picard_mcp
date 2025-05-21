@@ -4,6 +4,37 @@ This document tracks known issues, warnings, and their resolutions in the Picard
 
 ## Known Issues and Warnings
 
+### 0. Test Suite Dependency and Schema Issues
+
+**Issue**: The test suite is failing with multiple errors related to:
+1. Async database session handling in tests
+2. Missing schema fields in OAuth models
+3. Type conversion issues in request/response schemas
+4. pgvector extension initialization errors
+
+**Status**: In progress
+
+**Resolution Progress**:
+- Added missing schemas: `ClientRegistrationRequest`, `ClientRegistrationResponse`, `TokenResponse`, `MemoryQueryRequest`, `MemoryQueryResponse`, `UserResponse`
+- Updated OAuth model to include missing fields from ClientRegistrationRequest schema
+- Fixed validators in OAuth schemas to properly handle string-to-list conversions
+- Attempted to fix async database session handling in test fixtures
+
+**To Fix**:
+1. **Database Session Handling**: The test fixtures need to be updated to properly handle async database sessions. The current issue is that the `db` dependency is an async generator but is being used as if it were a regular object with methods like `execute()` and `add()`.
+
+2. **Test Database Setup**: The test database needs to be properly initialized with the pgvector extension before running tests.
+
+3. **Transaction Management**: Tests are encountering "cannot perform operation: another operation is in progress" errors, indicating issues with transaction management in the async context.
+
+4. **Schema Validation**: Ensure all schemas have proper validation methods for converting between string and list types.
+
+**Recommended Approach**:
+1. Simplify the test configuration to use a mock database or in-memory SQLite for tests
+2. Create proper database fixtures that handle async operations correctly
+3. Update all models and schemas to ensure compatibility with the latest Pydantic version
+4. Add proper error handling for database operations in tests
+
 ### 1. Pydantic V2 Deprecation Warnings
 
 **Issue**: When running tests, the following Pydantic V2 deprecation warnings appear:

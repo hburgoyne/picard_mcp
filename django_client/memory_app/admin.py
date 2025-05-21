@@ -4,13 +4,13 @@ from .models import OAuthToken, Memory
 @admin.register(OAuthToken)
 class OAuthTokenAdmin(admin.ModelAdmin):
     list_display = ('user', 'expires_at', 'is_expired', 'created_at', 'updated_at')
-    list_filter = ('is_expired',)
+    list_filter = ('created_at', 'updated_at')
     search_fields = ('user__username', 'user__email')
     readonly_fields = ('created_at', 'updated_at')
 
 @admin.register(Memory)
 class MemoryAdmin(admin.ModelAdmin):
     list_display = ('id', 'user', 'permission', 'expiration_date', 'is_expired', 'created_at', 'updated_at')
-    list_filter = ('permission', 'is_expired')
+    list_filter = ('permission', 'expiration_date')
     search_fields = ('user__username', 'user__email', 'text')
     readonly_fields = ('id', 'created_at', 'updated_at')

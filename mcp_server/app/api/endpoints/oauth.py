@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status, Form
 from fastapi.responses import RedirectResponse, JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
-from authlib.integrations.starlette_oauth2 import OAuth2Error
+from authlib.oauth2 import OAuth2Error
 from typing import Optional, Dict, Any, List
 import uuid
 import secrets

@@ -7,8 +7,13 @@
 
 Rebuild Docker containers
 ```
-docker-compose down --remove-orphans && docker image prune -f && docker-compose up --build -d
+docker-compose down --remove-orphans && docker image prune -f && docker-compose up -d
 ```
+OR
+```
+docker-compose down --remove-orphans && docker image prune -f && docker-compose build --no-cache && docker-compose up -d
+```
+
 
 Run tests in Docker container
 ```

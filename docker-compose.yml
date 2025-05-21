@@ -26,13 +26,13 @@ services:
     volumes:
       - postgres_data_django:/var/lib/postgresql/data
     environment:
-      - POSTGRES_USER=${DB_USER}
-      - POSTGRES_PASSWORD=${DB_PASSWORD}
-      - POSTGRES_DB=${DB_NAME}
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=django_client
     ports:
       - "5434:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d django_client"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -78,19 +78,19 @@ services:
       mcp_server:
         condition: service_started
     environment:
-      - DEBUG=${DEBUG}
-      - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY}
-      - DB_NAME=${DB_NAME}
-      - DB_USER=${DB_USER}
-      - DB_PASSWORD=${DB_PASSWORD}
+      - DEBUG=True
+      - DJANGO_SECRET_KEY=django-insecure-key-for-development-only
+      - DB_NAME=django_client
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
       - DB_HOST=db-django
       - DB_PORT=5432
-      - MCP_SERVER_URL=${MCP_SERVER_URL}
-      - MCP_SERVER_INTERNAL_URL=${MCP_SERVER_INTERNAL_URL}
+      - MCP_SERVER_URL=http://localhost:8001
+      - MCP_SERVER_INTERNAL_URL=http://mcp_server:8000
       - OAUTH_CLIENT_ID=${OAUTH_CLIENT_ID}
       - OAUTH_CLIENT_SECRET=${OAUTH_CLIENT_SECRET}
-      - OAUTH_REDIRECT_URI=${OAUTH_REDIRECT_URI}
-      - OAUTH_SCOPES=${OAUTH_SCOPES}
+      - OAUTH_REDIRECT_URI=http://localhost:8000/oauth/callback
+      - OAUTH_SCOPES=memories:read memories:write
     command: python manage.py runserver 0.0.0.0:8000
 
 volumes:

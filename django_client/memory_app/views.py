@@ -1,6 +1,7 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
+from django.contrib.auth import login, authenticate
 from django.conf import settings
 from django.http import HttpResponse, JsonResponse
 from django.urls import reverse
@@ -16,7 +17,7 @@ from datetime import datetime, timedelta
 from urllib.parse import urlencode
 
 from .models import OAuthToken, Memory
-from .forms import MemoryForm, MemorySearchForm, UserQueryForm
+from .forms import MemoryForm, MemorySearchForm, UserQueryForm, UserRegistrationForm
 
 def generate_code_verifier():
     """Generate a code verifier for PKCE."""
@@ -528,3 +529,16 @@ def sync_memories(request):
         messages.error(request, f'Error syncing memories: {str(e)}')
     
     return redirect('dashboard')
+
+def register(request):
+    """Register a new user."""
+    if request.method == 'POST':
+        form = UserRegistrationForm(request.POST)
+        if form.is_valid():
+            user = form.save()
+            username = form.cleaned_data.get('username')
+            messages.success(request, f'Account created for {username}! You can now log in.')
+            return redirect('login')
+    else:
+        form = UserRegistrationForm()
+    return render(request, 'register.html', {'form': form})

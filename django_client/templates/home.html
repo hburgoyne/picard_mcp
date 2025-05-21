@@ -32,7 +32,7 @@
                 <a href="{% url 'dashboard' %}" class="btn btn-primary btn-lg">Go to Dashboard</a>
             {% else %}
                 <a href="{% url 'login' %}" class="btn btn-primary btn-lg">Login</a>
-                <p class="mt-3">Don't have an account? Please contact an administrator to create one for you.</p>
+                <a href="{% url 'register' %}" class="btn btn-outline-primary btn-lg ms-2">Register</a>
             {% endif %}
         </div>
     </div>

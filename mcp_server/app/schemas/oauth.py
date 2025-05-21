@@ -1,4 +1,6 @@
-from pydantic import BaseModel, UUID4, Field, validator, HttpUrl
+from pydantic import BaseModel, Field, HttpUrl
+from pydantic.types import UUID4
+from pydantic import field_validator as validator
 from typing import Optional, List, Union
 from datetime import datetime
 import uuid
@@ -99,6 +101,48 @@ class TokenRequest(BaseModel):
     redirect_uri: Optional[str] = None
     client_id: UUID4
     client_secret: Optional[str] = None
+    code_verifier: Optional[str] = None
+    refresh_token: Optional[str] = None
+    
+    @validator("grant_type")
+    def validate_grant_type(cls, v):
+        """Validate grant_type value."""
+        allowed_grant_types = ["authorization_code", "refresh_token"]
+        if v not in allowed_grant_types:
+            raise ValueError(f"grant_type must be one of: {', '.join(allowed_grant_types)}")
+        return v
+
+class TokenResponse(BaseModel):
+    """Schema for OAuth token response."""
+    access_token: str
+    token_type: str = "bearer"
+    expires_in: int
+    refresh_token: str
+    scope: str
+
+class TokenError(BaseModel):
+    """Schema for OAuth token error response."""
+    error: str
+    error_description: Optional[str] = None
+
+class OAuthScope(BaseModel):
+    """Schema for OAuth scope."""
+    name: str
+    description: str
+
+class IntrospectionRequest(BaseModel):
+    """Schema for token introspection request."""
+    token: str
+    token_type_hint: Optional[str] = None
+
+class IntrospectionResponse(BaseModel):
+    """Schema for token introspection response."""
+    active: bool
+    client_id: Optional[UUID4] = None
+    user_id: Optional[UUID4] = None
+    scope: Optional[str] = None
+    exp: Optional[int] = None
+    iat: Optional[int] = None
     code_verifier: Optional[str] = None
     refresh_token: Optional[str] = None
 

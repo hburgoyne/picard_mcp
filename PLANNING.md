@@ -59,10 +59,10 @@ This document outlines the step-by-step implementation plan for the Picard MCP p
 ## Phase 3: OAuth 2.0 Implementation
 
 ### 3.1 OAuth Core Setup
-- [ ] Set up OAuth routes and controller structure
-- [ ] Implement OAuth schema validation
-- [ ] Create OAuth error handling utilities
-- [ ] Implement basic OAuth security measures
+- [x] Set up OAuth routes and controller structure
+- [x] Implement OAuth schema validation
+- [x] Create OAuth error handling utilities
+- [x] Implement basic OAuth security measures
 
 ### 3.2 Client Registration
 - [ ] Implement client registration endpoint

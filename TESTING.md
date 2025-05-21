@@ -137,6 +137,41 @@ docker exec picard_mcp-django_client python manage.py test
 
 The Django test runner creates a test database for the duration of the tests, ensuring that your development database remains untouched.
 
+## Phase 3: OAuth 2.0 Implementation Tests
+
+### OAuth Core Setup Tests
+
+We have implemented tests to verify the OAuth 2.0 core setup:
+
+1. **OAuth Client Registration Test**:
+   - Verifies that OAuth clients can be registered via the API
+   - Tests validation of client data
+   - Checks that client credentials are generated properly
+
+2. **OAuth Authorization Endpoint Test**:
+   - Verifies the authorization flow
+   - Tests redirection with authorization code
+   - Validates state parameter handling
+   - Checks PKCE challenge handling
+
+3. **OAuth Token Endpoint Test**:
+   - Verifies authorization code exchange for tokens
+   - Tests token response format
+   - Validates client credentials requirement
+   - Checks token storage in database
+
+### Running OAuth Tests
+
+To run the OAuth-specific tests:
+
+```bash
+# Make sure the Docker containers are running
+docker-compose up -d
+
+# Run the OAuth tests using pytest
+docker exec picard_mcp-mcp_server pytest -xvs tests/test_oauth.py
+```
+
 ### Running All Tests
 
 To run all tests (both MCP server and Django client), you can run these commands in sequence:

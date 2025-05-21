@@ -15,7 +15,7 @@ This implementation follows the Model Context Protocol standard, which allows LL
 ### Key Components
 
 1. **MCP Server**: A FastAPI-based implementation of the Model Context Protocol that provides:
-   - OAuth 2.0 authentication and authorization
+   - OAuth 2.0 authentication and authorization with PKCE support
    - Memory storage with vector embeddings
    - Permission-based memory access control
    - LLM integration for memory-based queries

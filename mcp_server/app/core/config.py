@@ -20,8 +20,9 @@ class Settings(BaseSettings):
     POSTGRES_HOST: str = os.getenv("POSTGRES_HOST", "localhost")
     POSTGRES_PORT: str = os.getenv("POSTGRES_PORT", "5432")
     
-    # Database URL
+    # Database URLs
     DATABASE_URL: str = f"postgresql://{POSTGRES_USER}:{POSTGRES_PASSWORD}@{POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DB}"
+    ASYNC_DATABASE_URL: str = f"postgresql+asyncpg://{POSTGRES_USER}:{POSTGRES_PASSWORD}@{POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DB}"
     
     # OAuth settings
     OAUTH_CLIENT_ID: str = os.getenv("OAUTH_CLIENT_ID", "550e8400-e29b-41d4-a716-446655440000")
@@ -37,6 +38,10 @@ class Settings(BaseSettings):
     # OpenAI settings
     OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY", "")
     EMBEDDING_MODEL: str = "text-embedding-3-small"
+    
+    # LangChain settings
+    LLM_MODEL: str = "gpt-3.5-turbo"
+    MEMORY_K: int = 5  # Number of memories to retrieve for context
     
     # MCP server settings
     MCP_ISSUER_URL: str = os.getenv("MCP_ISSUER_URL", "http://localhost:8001")

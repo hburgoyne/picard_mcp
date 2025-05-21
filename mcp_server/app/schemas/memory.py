@@ -19,13 +19,14 @@ class MemoryBase(BaseModel):
 
 class MemoryCreate(MemoryBase):
     """Schema for creating a new memory."""
-    pass
+    encrypt: bool = False  # Whether to encrypt the memory text
 
 class MemoryUpdate(BaseModel):
     """Schema for updating a memory."""
     text: Optional[str] = None
     permission: Optional[str] = None
     expiration_date: Optional[datetime] = None
+    encrypt: Optional[bool] = None  # Whether to encrypt the memory text
 
     @validator("permission")
     def validate_permission(cls, v):
@@ -48,9 +49,13 @@ class MemoryInDBBase(MemoryBase):
     class Config:
         orm_mode = True
 
-class Memory(MemoryInDBBase):
+class MemoryResponse(MemoryInDBBase):
     """Schema for memory data returned to client."""
     is_expired: bool
+    
+class Memory(MemoryResponse):
+    """Alias for MemoryResponse for backward compatibility."""
+    pass
 
 class MemoryInDB(MemoryInDBBase):
     """Schema for memory data stored in database (includes encrypted text)."""
@@ -73,3 +78,16 @@ class MemoryPermissionUpdate(BaseModel):
         if v not in allowed_permissions:
             raise ValueError(f"Permission must be one of: {', '.join(allowed_permissions)}")
         return v
+
+class MemoryWithScore(BaseModel):
+    """Schema for memory with similarity score."""
+    memory: MemoryResponse
+    score: float
+
+class MemorySearchResults(BaseModel):
+    """Schema for memory search results."""
+    query: str
+    results: List[tuple[MemoryResponse, float]]
+    
+    class Config:
+        arbitrary_types_allowed = True

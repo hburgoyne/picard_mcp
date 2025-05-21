@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # PostgreSQL database for MCP server with pgvector extension
   db-mcp:

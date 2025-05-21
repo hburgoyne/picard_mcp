@@ -3,15 +3,25 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 import os
 from dotenv import load_dotenv
+import logging
 
 # Load environment variables
 load_dotenv()
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+)
+logger = logging.getLogger("mcp_server")
 
 # Create FastAPI app
 app = FastAPI(
     title=os.getenv("MCP_SERVER_NAME", "Picard MCP"),
     description="Model Context Protocol (MCP) server for memory management",
     version="0.1.0",
+    docs_url="/docs",
+    redoc_url="/redoc",
 )
 
 # Configure CORS
@@ -23,11 +33,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Health check endpoint
-@app.get("/health", tags=["Health"])
-async def health_check():
-    return {"status": "healthy"}
-
 # Root endpoint
 @app.get("/", tags=["Root"])
 async def root():
@@ -36,9 +41,23 @@ async def root():
         "documentation": "/docs",
     }
 
-# Import and include routers here (will be implemented later)
-# from app.api.api import api_router
-# app.include_router(api_router)
+# Import and include API router
+from app.api.api import api_router
+app.include_router(api_router)
+
+# Database initialization
+from app.db.utils import initialize_db
+from app.db.session import AsyncSessionLocal
+
+@app.on_event("startup")
+async def startup_db_client():
+    """Initialize database on startup"""
+    try:
+        async with AsyncSessionLocal() as session:
+            await initialize_db(session)
+        logger.info("Database initialized successfully")
+    except Exception as e:
+        logger.error(f"Database initialization failed: {e}")
 
 if __name__ == "__main__":
     import uvicorn

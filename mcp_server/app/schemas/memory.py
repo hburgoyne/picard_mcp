@@ -46,7 +46,7 @@ class MemoryInDBBase(MemoryBase):
     embedding: Optional[List[float]] = None
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class Memory(MemoryInDBBase):
     """Schema for memory data returned to client."""

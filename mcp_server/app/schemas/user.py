@@ -27,7 +27,7 @@ class UserInDBBase(UserBase):
     updated_at: datetime
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class User(UserInDBBase):
     """Schema for user data returned to client."""

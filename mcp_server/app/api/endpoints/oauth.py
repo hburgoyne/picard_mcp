@@ -95,13 +95,29 @@ async def consent(
                 status_code=status.HTTP_302_FOUND
             )
         
+        # Validate requested scopes against client's allowed scopes
+        requested_scopes = scope.split()
+        allowed_scopes = client.scopes
+        
+        # Only grant scopes that are allowed for this client
+        granted_scopes = [s for s in requested_scopes if s in allowed_scopes]
+        
+        if not granted_scopes:
+            return RedirectResponse(
+                f"{redirect_uri}?error=invalid_scope&error_description=No+valid+scopes+requested&state={state}",
+                status_code=status.HTTP_302_FOUND
+            )
+        
+        # Join granted scopes back into a space-separated string
+        scope_str = " ".join(granted_scopes)
+        
         # Create authorization code
         auth_code = create_authorization_code(
             db=db,
             client_id=client.client_id,  # Use client_id field, not the primary key id
             user_id=current_user.id,
             redirect_uri=redirect_uri,
-            scope=scope,
+            scope=scope_str,
             code_challenge=code_challenge,
             code_challenge_method=code_challenge_method
         )
@@ -230,12 +246,28 @@ async def authorize(
         else:
             logger.info(f"User authenticated: {current_user.username if hasattr(current_user, 'username') else current_user.id}")
         
-        # Render the consent page
-        scopes_with_descriptions = get_scope_descriptions(scope)
+        # Validate requested scopes against client's allowed scopes
+        requested_scopes = scope.split()
+        allowed_scopes = client.scopes
+        
+        # Only show scopes that are allowed for this client
+        valid_scopes = [s for s in requested_scopes if s in allowed_scopes]
+        
+        if not valid_scopes:
+            return RedirectResponse(
+                f"{redirect_uri}?error=invalid_scope&error_description=No+valid+scopes+requested&state={state}",
+                status_code=status.HTTP_302_FOUND
+            )
+        
+        # Join valid scopes back into a space-separated string
+        valid_scope_str = " ".join(valid_scopes)
+        
+        # Get descriptions for valid scopes
+        scopes_with_descriptions = get_scope_descriptions(valid_scope_str)
         logger.info(f"Rendering consent page with scopes: {scopes_with_descriptions}")
         
+        # Render the consent page with validated scopes
         try:
-            # Use the templates object directly
             return templates.TemplateResponse(
                 "consent.html",
                 {
@@ -243,7 +275,7 @@ async def authorize(
                     "client_id": client_id,
                     "client_name": client.client_name,
                     "redirect_uri": redirect_uri,
-                    "scope": scope,
+                    "scope": valid_scope_str,  # Use validated scopes
                     "state": state,
                     "response_type": response_type,
                     "code_challenge": code_challenge,

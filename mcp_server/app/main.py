@@ -77,6 +77,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Add OAuth token validation middleware
+from app.middleware.oauth import verify_token_middleware
+app.middleware("http")(verify_token_middleware)
+
 # Root endpoint
 @app.get("/", tags=["Root"])
 async def root():

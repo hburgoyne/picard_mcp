@@ -163,6 +163,53 @@ We have implemented tests to verify the OAuth 2.0 core setup:
    - Checks PKCE code verifier validation
    - Verifies token storage in database
 
+### OAuth PKCE Flow Tests
+
+We have implemented comprehensive tests for the OAuth 2.0 PKCE flow:
+
+1. **PKCE Authorization Test** (`test_authorize_with_pkce`):
+   - Verifies the authorization flow with PKCE challenge
+   - Tests the consent page rendering
+   - Validates the authorization code generation
+   - Checks that code challenge is stored with authorization code
+
+2. **PKCE Token Exchange Test** (`test_token_exchange_with_pkce`):
+   - Verifies token exchange with valid code verifier
+   - Tests token response format and content
+   - Validates that authorization code is consumed
+   - Checks token storage in database
+
+3. **PKCE Security Test** (`test_token_exchange_without_code_verifier`):
+   - Verifies that token exchange fails without code verifier
+   - Tests error response format
+   - Validates security requirements
+
+4. **Token Refresh Test** (`test_refresh_token`):
+   - Verifies refresh token flow
+   - Tests new token generation
+   - Validates old refresh token invalidation
+   - Checks token rotation security
+
+### Django OAuth Client Tests
+
+We have implemented tests for the Django client's OAuth integration:
+
+1. **OAuth Authorization Test** (`test_oauth_authorize_generates_state_and_pkce`):
+   - Verifies state and PKCE parameter generation
+   - Tests session storage of parameters
+   - Validates redirect URL format
+
+2. **OAuth Callback Test** (`test_oauth_callback_exchanges_code_for_tokens`):
+   - Verifies authorization code exchange
+   - Tests state validation
+   - Validates token storage in database
+   - Checks error handling
+
+3. **Token Model Test** (`test_token_is_expired`, `test_token_get_for_user`):
+   - Verifies token expiration logic
+   - Tests token retrieval methods
+   - Validates token management
+
 ### Running OAuth Tests
 
 To run the OAuth-specific tests:
@@ -174,6 +221,60 @@ docker-compose up -d
 # Run the OAuth tests using pytest
 docker exec picard_mcp-mcp_server pytest -xvs tests/test_oauth.py
 ```
+
+### Running OAuth PKCE Tests
+
+To run the OAuth PKCE-specific tests:
+
+```bash
+# Make sure the Docker containers are running
+docker-compose up -d
+
+# Run the OAuth PKCE tests using pytest
+docker-compose exec mcp_server pytest -xvs tests/test_oauth_pkce.py
+```
+
+### Running Django OAuth Client Tests
+
+To run the Django OAuth client tests:
+
+```bash
+# Make sure the Docker containers are running
+docker-compose up -d
+
+# Run the Django OAuth client tests
+docker-compose exec django_client python manage.py test memory_app.tests.test_oauth_integration
+```
+
+### Running Integration Tests
+
+We have implemented end-to-end integration tests that verify the complete OAuth flow between the MCP server and Django client:
+
+1. **OAuth Flow Integration Test** (`test_oauth_flow`):
+   - Tests the complete user journey from login to authorization
+   - Verifies consent page rendering and approval
+   - Validates token exchange and storage
+   - Checks successful redirection and session management
+
+2. **Token Refresh Integration Test** (`test_token_refresh`):
+   - Tests the refresh token flow in a real-world scenario
+   - Verifies token refresh functionality between services
+   - Validates session persistence
+
+To run the integration tests:
+
+```bash
+# Make sure both services are running
+docker-compose up -d
+
+# Install required dependencies (if not already installed)
+pip install pytest selenium
+
+# Run the integration tests
+python -m pytest tests/test_oauth_integration.py -v
+```
+
+Note: The integration tests require a Chrome WebDriver to be installed on your system.
 
 ### Running All Tests
 
@@ -189,16 +290,35 @@ docker-compose exec mcp_server pytest -xvs
 # Run Django client tests (collect static files first if needed)
 docker exec picard_mcp-django_client python manage.py collectstatic --noinput
 docker exec picard_mcp-django_client python manage.py test
+
+# Run integration tests (requires additional dependencies)
+python -m pytest tests/test_oauth_integration.py -v
 ```
 
 This allows you to see the results of each test suite separately and take action accordingly.
 
+## Test Coverage
+
+Our current test coverage includes:
+
+1. **Unit Tests**: For individual components in isolation
+   - MCP server models, utilities, and endpoints
+   - Django client views, forms, and models
+
+2. **Integration Tests**: For interactions between components
+   - OAuth flow between MCP server and Django client
+   - Token management and refresh flows
+
+3. **End-to-End Tests**: For complete user workflows
+   - User registration and authentication
+   - OAuth authorization and consent
+   - Token exchange and management
+
 ## Future Testing Plans
 
-In subsequent phases, we will implement more comprehensive tests:
+In subsequent phases, we will implement additional tests for:
 
-1. **Additional Unit Tests**: For services and utilities
-2. **Integration Tests**: For API endpoints and database interactions
-3. **End-to-End Tests**: For complete user workflows
-
-These tests will be documented as they are implemented in future phases.
+1. **Memory Management API**: Tests for memory creation, retrieval, and search
+2. **Permission System**: Tests for scope-based permissions and access control
+3. **Vector Embedding**: Tests for semantic search functionality
+4. **LLM Integration**: Tests for AI-powered memory queries

@@ -9,12 +9,69 @@ from app.main import app
 from app.models.oauth import OAuthClient, AuthorizationCode, Token
 from app.models.user import User
 from app.utils.oauth import create_authorization_code, create_access_token
+from app.utils.admin import verify_admin_credentials
 import uuid
 import secrets
 import hashlib
 import base64
 
 client = TestClient(app)
+
+@pytest.fixture
+def admin_user(db_session: Session):
+    """Create an admin user for testing."""
+    # Check if admin user exists
+    admin = db_session.query(User).filter(User.username == "testadmin").first()
+    if admin:
+        return admin
+    
+    # Create admin user
+    password_hash = hashlib.sha256("testpassword".encode()).hexdigest()
+    admin = User(
+        username="testadmin",
+        email="testadmin@example.com",
+        hashed_password=password_hash,
+        is_active=True,
+        is_superuser=True
+    )
+    db_session.add(admin)
+    db_session.commit()
+    db_session.refresh(admin)
+    return admin
+
+@pytest.fixture
+def admin_auth_header():
+    """Create an auth header for admin authentication."""
+    credentials = base64.b64encode(b"testadmin:testpassword").decode("utf-8")
+    return {"Authorization": f"Basic {credentials}"}
+
+@pytest.fixture
+def non_admin_user(db_session: Session):
+    """Create a non-admin user for testing."""
+    # Check if user exists
+    user = db_session.query(User).filter(User.username == "testuser").first()
+    if user:
+        return user
+    
+    # Create user
+    password_hash = hashlib.sha256("userpassword".encode()).hexdigest()
+    user = User(
+        username="testuser",
+        email="testuser@example.com",
+        hashed_password=password_hash,
+        is_active=True,
+        is_superuser=False
+    )
+    db_session.add(user)
+    db_session.commit()
+    db_session.refresh(user)
+    return user
+
+@pytest.fixture
+def non_admin_auth_header():
+    """Create an auth header for non-admin authentication."""
+    credentials = base64.b64encode(b"testuser:userpassword").decode("utf-8")
+    return {"Authorization": f"Basic {credentials}"}
 
 def test_register_client(db_session: Session, override_get_db):
     """Test OAuth client registration."""
@@ -178,3 +235,147 @@ def test_token_endpoint(db_session: Session, override_get_db):
     assert db_token.client_id == test_client.id
     assert db_token.user_id == user_id
     assert db_token.scope == "memories:read"
+
+
+def test_admin_list_oauth_clients(db_session: Session, override_get_db, admin_user, admin_auth_header):
+    """Test listing OAuth clients as admin."""
+    # Create test clients
+    client1 = OAuthClient(
+        client_id=uuid.uuid4(),
+        client_secret=secrets.token_urlsafe(32),
+        client_name="Admin Test Client 1",
+        redirect_uris=["http://localhost/callback1"],
+        scopes=["memories:read"]
+    )
+    client2 = OAuthClient(
+        client_id=uuid.uuid4(),
+        client_secret=secrets.token_urlsafe(32),
+        client_name="Admin Test Client 2",
+        redirect_uris=["http://localhost/callback2"],
+        scopes=["memories:write"]
+    )
+    db_session.add_all([client1, client2])
+    db_session.commit()
+    
+    # Test listing clients
+    response = client.get("/api/admin/clients", headers=admin_auth_header)
+    
+    assert response.status_code == 200
+    clients = response.json()
+    assert isinstance(clients, list)
+    assert len(clients) >= 2
+    
+    # Check that our test clients are in the list
+    client_ids = [c["client_id"] for c in clients]
+    assert str(client1.client_id) in client_ids
+    assert str(client2.client_id) in client_ids
+
+
+def test_admin_get_oauth_client(db_session: Session, override_get_db, admin_user, admin_auth_header):
+    """Test getting a specific OAuth client as admin."""
+    # Create test client
+    client_id = uuid.uuid4()
+    test_client = OAuthClient(
+        client_id=client_id,
+        client_secret=secrets.token_urlsafe(32),
+        client_name="Admin Get Test Client",
+        redirect_uris=["http://localhost/callback"],
+        scopes=["memories:read", "memories:write"]
+    )
+    db_session.add(test_client)
+    db_session.commit()
+    
+    # Test getting client
+    response = client.get(f"/api/admin/clients/{client_id}", headers=admin_auth_header)
+    
+    assert response.status_code == 200
+    client_data = response.json()
+    assert client_data["client_id"] == str(client_id)
+    assert client_data["client_name"] == "Admin Get Test Client"
+    assert client_data["redirect_uris"] == ["http://localhost/callback"]
+    assert client_data["scopes"] == ["memories:read", "memories:write"]
+
+
+def test_admin_update_oauth_client(db_session: Session, override_get_db, admin_user, admin_auth_header):
+    """Test updating an OAuth client as admin."""
+    # Create test client
+    client_id = uuid.uuid4()
+    test_client = OAuthClient(
+        client_id=client_id,
+        client_secret=secrets.token_urlsafe(32),
+        client_name="Admin Update Test Client",
+        redirect_uris=["http://localhost/callback"],
+        scopes=["memories:read"]
+    )
+    db_session.add(test_client)
+    db_session.commit()
+    
+    # Update data
+    update_data = {
+        "client_name": "Updated Client Name",
+        "redirect_uris": ["http://localhost/new-callback"],
+        "scopes": ["memories:read", "memories:write"],
+        "is_confidential": True
+    }
+    
+    # Test updating client
+    response = client.put(
+        f"/api/admin/clients/{client_id}",
+        headers=admin_auth_header,
+        json=update_data
+    )
+    
+    assert response.status_code == 200
+    client_data = response.json()
+    assert client_data["client_name"] == "Updated Client Name"
+    assert client_data["redirect_uris"] == ["http://localhost/new-callback"]
+    assert client_data["scopes"] == ["memories:read", "memories:write"]
+    
+    # Verify in database
+    updated_client = db_session.query(OAuthClient).filter(OAuthClient.client_id == client_id).first()
+    assert updated_client.client_name == "Updated Client Name"
+    assert updated_client.redirect_uris == ["http://localhost/new-callback"]
+    assert updated_client.scopes == ["memories:read", "memories:write"]
+
+
+def test_admin_delete_oauth_client(db_session: Session, override_get_db, admin_user, admin_auth_header):
+    """Test deleting an OAuth client as admin."""
+    # Create test client
+    client_id = uuid.uuid4()
+    test_client = OAuthClient(
+        client_id=client_id,
+        client_secret=secrets.token_urlsafe(32),
+        client_name="Admin Delete Test Client",
+        redirect_uris=["http://localhost/callback"],
+        scopes=["memories:read"]
+    )
+    db_session.add(test_client)
+    db_session.commit()
+    
+    # Test deleting client
+    response = client.delete(f"/api/admin/clients/{client_id}", headers=admin_auth_header)
+    
+    assert response.status_code == 204
+    
+    # Verify client is deleted
+    deleted_client = db_session.query(OAuthClient).filter(OAuthClient.client_id == client_id).first()
+    assert deleted_client is None
+
+
+def test_admin_unauthorized_access(db_session: Session, override_get_db):
+    """Test that admin endpoints require authentication."""
+    # No auth header
+    response = client.get("/api/admin/clients")
+    assert response.status_code == 401
+    
+    # Invalid credentials
+    invalid_credentials = base64.b64encode(b"invalid:credentials").decode("utf-8")
+    headers = {"Authorization": f"Basic {invalid_credentials}"}
+    response = client.get("/api/admin/clients", headers=headers)
+    assert response.status_code == 401
+
+
+def test_admin_non_admin_access(db_session: Session, override_get_db, non_admin_user, non_admin_auth_header):
+    """Test that non-admin users cannot access admin endpoints."""
+    response = client.get("/api/admin/clients", headers=non_admin_auth_header)
+    assert response.status_code == 403  # Forbidden

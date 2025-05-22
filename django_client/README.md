@@ -104,11 +104,13 @@ This will start the following services:
 - `mcp_server`: MCP server running on port 8001 (internal name: mcp_server:8000)
 - `db-mcp`: PostgreSQL database for the MCP server (internal port 5432)
 
-After starting the services, register the Django client with the MCP server:
+After starting the services, register the Django client with the MCP server (requires admin authentication):
 
 ```bash
-docker exec picard_mcp-django_client-1 python register_oauth_client.py
+docker-compose exec django_client python register_oauth_client.py
 ```
+
+Note: The registration script uses admin credentials from environment variables (`ADMIN_USERNAME` and `ADMIN_PASSWORD`). Make sure these are set in your environment or the script will use default values (admin/adminpassword).
 
 Access the Django client at http://localhost:8000
 

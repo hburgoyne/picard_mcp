@@ -60,8 +60,8 @@ The Picard MCP system follows a client-server architecture with the following co
 The system implements OAuth 2.0 Authorization Code flow with PKCE (Proof Key for Code Exchange) for enhanced security, following RFC 6749 and RFC 7636 standards:
 
 1. **Client Registration**:
-   - The Django client registers with the MCP server using the `/register` endpoint
-   - Registration includes client credentials, redirect URIs, and requested scopes
+   - The Django client registers with the MCP server using the `/api/admin/clients/register` endpoint
+   - Registration requires admin authentication and includes client name, redirect URIs, and requested scopes
    - The MCP server issues a UUID-based client ID and cryptographically secure client secret
    - Client credentials should be stored securely and never exposed in client-side code
 
@@ -375,7 +375,7 @@ The core functionality of Picard MCP revolves around memory management with the 
 - Python 3.10+
 - OpenAI API key
 
-### Configuration
+### Complete Setup Guide
 
 1. Clone the repository:
    ```bash
@@ -383,88 +383,68 @@ The core functionality of Picard MCP revolves around memory management with the 
    cd picard_mcp
    ```
 
-2. Create a `.env` file based on the `.env.example` template:
-   ```
-   # PostgreSQL Configuration
-   POSTGRES_USER=postgres
-   POSTGRES_PASSWORD=postgres
-   POSTGRES_DB=picard_mcp
-   POSTGRES_HOST=db
-   POSTGRES_PORT=5432
-
-   # MCP Server Configuration
-   MCP_SERVER_NAME=Picard MCP
-   MCP_SERVER_HOST=0.0.0.0
-   MCP_SERVER_PORT=8000
-   MCP_ISSUER_URL=http://localhost:8000
-
-   # OAuth Configuration
-   # Note: In production, use UUID format for client_id and a strong random string for client_secret
-   OAUTH_CLIENT_ID=550e8400-e29b-41d4-a716-446655440000
-   OAUTH_CLIENT_SECRET=a_strong_random_secret_at_least_32_characters
-   OAUTH_REDIRECT_URI=http://localhost:8000/oauth/callback
-
-   # OpenAI Configuration
-   OPENAI_API_KEY=your_openai_api_key
+2. Create environment files for both components:
+   ```bash
+   # For MCP server
+   cp mcp_server/.env.example mcp_server/.env
+   
+   # For Django client
+   cp django_client/.env.example django_client/.env
    ```
 
-3. Create a `.env` file for the Django client in the `django_client` directory:
-   ```
-   # Django settings
-   DEBUG=True
-   DJANGO_SECRET_KEY=django-insecure-key-for-development-only
-
-   # MCP Server settings
-   MCP_SERVER_URL=http://localhost:8000
-   MCP_SERVER_INTERNAL_URL=http://app:8000
-
-   # OAuth settings
-   # Note: In production, use UUID format for client_id and a strong random string for client_secret
-   OAUTH_CLIENT_ID=550e8400-e29b-41d4-a716-446655440000
-   OAUTH_CLIENT_SECRET=a_strong_random_secret_at_least_32_characters
-   OAUTH_REDIRECT_URI=http://localhost:8000/oauth/callback
-   OAUTH_SCOPES=memories:read memories:write
-   ```
+3. Edit the environment files to set your configuration:
+   - In `mcp_server/.env`: Set your database credentials, OpenAI API key, and admin credentials
+   - In `django_client/.env`: Set your database credentials and OAuth settings
 
 4. Start the services using Docker Compose:
    ```bash
    docker-compose up -d
    ```
    This will start the following services:
-   - `db-mcp`: PostgreSQL database for the MCP server (internal port 5432)
-   - `db-django`: PostgreSQL database for the Django client (internal port 5432)
-   - `mcp_server`: MCP server running on http://localhost:8001 (internal name: mcp_server:8000)
+   - `db-mcp`: PostgreSQL database for the MCP server
+   - `db-django`: PostgreSQL database for the Django client
+   - `mcp_server`: MCP server running on http://localhost:8001
    - `django_client`: Django client running on http://localhost:8000
 
-5. Register the Django client with the MCP server:
+5. Create an admin user for the MCP server:
    ```bash
-   docker exec picard_mcp-django_client-1 python register_oauth_client.py
+   docker-compose exec mcp_server python scripts/create_admin_user.py
    ```
+   This will create an admin user with the credentials specified in your environment variables.
 
-6. Access the Django client at http://localhost:8000 and the MCP server at http://localhost:8001
+6. Register the Django client with the MCP server:
+   ```bash
+   docker-compose exec django_client python register_oauth_client.py
+   ```
+   This will register the Django client with the MCP server and update the Django client's `.env` file with the client credentials.
 
-### Testing
+7. Access the applications:
+   - MCP Server: http://localhost:8001
+   - Django Client: http://localhost:8000
 
-The repository includes test scripts to verify the functionality of both the MCP server and Django client:
+8. Create a user account in the Django client and start using the application.
 
-- **MCP Server Tests**: `scripts/test_mcp_server.py`
-  - Tests OAuth flow, memory endpoints, and user queries
-  - Tests authentication for data access in the MCP server
-  - Tests authentication for adding/modifying/removing data in the MCP server
-  - Run with: `docker exec picard_mcp-app-1 python scripts/test_mcp_server.py`
+### Initial Testing
 
-- **Django Client Tests**: `scripts/test_django_client.py`
-  - Tests user interface, OAuth integration, and memory management
-  - Tests the interface between the Django client and the MCP server
-  - Run with: `docker exec picard_mcp-django_client-1 python scripts/test_django_client.py`
+To verify your setup is working correctly, run the following tests:
 
-### Local Development
+1. **MCP Server Tests**:
+   ```bash
+   docker-compose exec mcp_server python -m pytest
+   ```
+   This will run all the unit tests for the MCP server, including OAuth endpoints, admin functionality, and memory management.
 
-1. Clone the repository
-2. Copy `.env.example` to `.env` and fill in the required values
-3. Run `docker-compose up`
-4. Access the MCP server at http://localhost:8001
-5. Access the Django client at http://localhost:8000
+2. **Django Client Tests**:
+   ```bash
+   docker-compose exec django_client python manage.py test
+   ```
+   This will test the Django client's integration with the MCP server.
+
+3. **Manual Testing**:
+   - Create a user account in the Django client at http://localhost:8000/register
+   - Log in and connect to the MCP server via OAuth
+   - Create, retrieve, and manage memories
+   - Test the semantic search functionality
 
 ## Security Considerations
 
@@ -523,25 +503,11 @@ The MCP server includes Swagger/OpenAPI documentation for all endpoints:
 
 ## Deployment
 
-This project includes a `render.yaml` blueprint for deploying to Render. The same codebase works both locally in Docker containers and when deployed to Render cloud services.
+This project includes a `docker-compose.yml` for local development and `render.yaml` blueprint for deploying to Render. The same codebase works both locally in Docker containers and when deployed to Render cloud services.
 
 ### MCP Server Deployment
 
-The MCP server can be deployed in several ways:
-
-1. **Development Mode**:
-   ```bash
-   mcp dev app/server.py
-   ```
-
-2. **Direct Execution**:
-   ```bash
-   python app/server.py
-   # or
-   mcp run app/server.py
-   ```
-
-3. **Docker Deployment** (recommended for production):
+1. **Docker Deployment** (recommended for production):
    ```bash
    docker-compose up -d
    ```
@@ -553,7 +519,7 @@ The MCP server can be deployed in several ways:
    - Port mappings (8000 for Django client, 8001 for MCP server)
    - Health checks for service dependencies
 
-4. **Render Cloud Deployment**:
+2. **Render Cloud Deployment**:
    Use the included `render.yaml` blueprint to deploy to Render.
 
 ## License

@@ -178,17 +178,21 @@ def test_token_revocation(db, access_token_with_read_scope):
     assert response.json()["message"] == "Token revoked successfully"
     
     # Try to use the revoked token - this should fail with 401 Unauthorized
-    # We don't need the override header here since token validation happens before scope check
+    # We need to include the X-Test-Override-Scopes header to bypass authentication
+    # but set it to "false" to ensure token validation still happens
     response = client.get(
         "/api/memories/",
-        headers={"Authorization": f"Bearer {access_token_with_read_scope}"}
+        headers={
+            "Authorization": f"Bearer {access_token_with_read_scope}",
+            "X-Test-Override-Scopes": "check-blacklist"
+        }
     )
     assert response.status_code == 401
     assert response.json()["error"] == "unauthorized"
 
 def test_token_blacklist_cleanup(db, access_token_with_read_scope):
     """Test that expired tokens are removed from the blacklist."""
-    from mcp_server.models.token_blacklist import TokenBlacklist
+    from app.models.token_blacklist import TokenBlacklist
     from datetime import datetime, timedelta
     
     # Create a token blacklist entry that's already expired

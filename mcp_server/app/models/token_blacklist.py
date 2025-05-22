@@ -18,7 +18,7 @@ class TokenBlacklist(BaseModel):
     expires_at = Column(DateTime, nullable=False)
     
     @classmethod
-    async def is_blacklisted(cls, db, token_jti):
+    def is_blacklisted(cls, db, token_jti):
         """
         Check if a token is blacklisted.
         

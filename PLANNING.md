@@ -5,6 +5,9 @@
 - Describes the setup locally and on Render
 ---
 
+# PICKING UP WHERE WE LEFT OFF:
+- Still working on some tests related to token blacklisting now that the correct table is in the database.
+
 # Picard MCP Implementation Plan (MVP)
 
 This document outlines the step-by-step implementation plan for the Picard MCP project MVP, focusing on simplicity and essential functionality.

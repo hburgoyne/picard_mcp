@@ -115,7 +115,7 @@ async def introspect_token(
     
     # Check if token is blacklisted
     token_jti = token  # In a real implementation, you'd extract a JTI from the token
-    is_blacklisted = await TokenBlacklist.is_blacklisted(db, token_jti)
+    is_blacklisted = TokenBlacklist.is_blacklisted(db, token_jti)
     
     if is_blacklisted:
         return {"active": False}

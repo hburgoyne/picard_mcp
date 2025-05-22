@@ -18,25 +18,33 @@ depends_on = None
 
 
 def upgrade():
-    # Create token_blacklist table
-    op.create_table(
-        'token_blacklist',
-        sa.Column('id', postgresql.UUID(as_uuid=True), primary_key=True),
-        sa.Column('token_jti', sa.String(), nullable=False, index=True),
-        sa.Column('blacklisted_at', sa.DateTime(), nullable=False),
-        sa.Column('reason', sa.String(), nullable=True),
-        sa.Column('expires_at', sa.DateTime(), nullable=False),
-        sa.Column('created_at', sa.DateTime(), nullable=False),
-        sa.Column('updated_at', sa.DateTime(), nullable=False),
-    )
-    
-    # Create index on token_jti for faster lookups
-    op.create_index(op.f('ix_token_blacklist_token_jti'), 'token_blacklist', ['token_jti'], unique=False)
+    # Check if the table already exists
+    conn = op.get_bind()
+    inspector = sa.inspect(conn)
+    if 'token_blacklist' not in inspector.get_table_names():
+        # Create token_blacklist table
+        op.create_table(
+            'token_blacklist',
+            sa.Column('id', postgresql.UUID(as_uuid=True), primary_key=True),
+            sa.Column('token_jti', sa.String(), nullable=False),
+            sa.Column('blacklisted_at', sa.DateTime(), nullable=False),
+            sa.Column('reason', sa.String(), nullable=True),
+            sa.Column('expires_at', sa.DateTime(), nullable=False),
+            sa.Column('created_at', sa.DateTime(), nullable=False),
+            sa.Column('updated_at', sa.DateTime(), nullable=False),
+        )
+        
+        # Create index on token_jti for faster lookups
+        op.create_index(op.f('ix_token_blacklist_token_jti'), 'token_blacklist', ['token_jti'], unique=False)
 
 
 def downgrade():
-    # Drop index
-    op.drop_index(op.f('ix_token_blacklist_token_jti'), table_name='token_blacklist')
-    
-    # Drop token_blacklist table
-    op.drop_table('token_blacklist')
+    # Check if the table exists before dropping
+    conn = op.get_bind()
+    inspector = sa.inspect(conn)
+    if 'token_blacklist' in inspector.get_table_names():
+        # Drop index
+        op.drop_index(op.f('ix_token_blacklist_token_jti'), table_name='token_blacklist')
+        
+        # Drop token_blacklist table
+        op.drop_table('token_blacklist')

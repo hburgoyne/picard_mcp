@@ -10,9 +10,14 @@ Rebuild Docker containers
 docker-compose down --remove-orphans && docker image prune -f && docker-compose up --build -d
 ```
 
-Run tests in Docker container
+Run Django tests in Docker container
 ```
-docker-compose exec web python manage.py test
+docker-compose exec django_client python manage.py test
+```
+
+Run MCP server tests in Docker container
+```
+docker-compose exec mcp_server pytest -xvs
 ```
 
 ---

@@ -7,13 +7,16 @@ from sqlalchemy.orm import Session
 
 from app.main import app
 from app.models.oauth import OAuthClient, AuthorizationCode, Token
+from app.models.user import User
 from app.utils.oauth import create_authorization_code, create_access_token
 import uuid
 import secrets
+import hashlib
+import base64
 
 client = TestClient(app)
 
-def test_register_client(db: Session):
+def test_register_client(db_session: Session, override_get_db):
     """Test OAuth client registration."""
     client_data = {
         "client_name": "Test Client",
@@ -34,11 +37,11 @@ def test_register_client(db: Session):
     assert data["is_confidential"] == client_data["is_confidential"]
     
     # Verify client was saved in database
-    db_client = db.query(OAuthClient).filter(OAuthClient.client_id == uuid.UUID(data["client_id"])).first()
+    db_client = db_session.query(OAuthClient).filter(OAuthClient.client_id == uuid.UUID(data["client_id"])).first()
     assert db_client is not None
     assert db_client.client_name == client_data["client_name"]
 
-def test_authorize_endpoint(db: Session):
+def test_authorize_endpoint(db_session: Session, override_get_db):
     """Test authorization endpoint."""
     # Create a test client first
     client_id = uuid.uuid4()
@@ -52,8 +55,8 @@ def test_authorize_endpoint(db: Session):
         redirect_uris=[redirect_uri],
         scopes=["memories:read", "memories:write"]
     )
-    db.add(test_client)
-    db.commit()
+    db_session.add(test_client)
+    db_session.commit()
     
     # Create authorization request
     auth_params = {
@@ -65,6 +68,18 @@ def test_authorize_endpoint(db: Session):
         "code_challenge": "test_challenge",
         "code_challenge_method": "S256"
     }
+    
+    # Create test user
+    test_user = User(
+        email="test_auth@example.com",
+        username="test_auth_user",
+        hashed_password="test_password"
+    )
+    db_session.add(test_user)
+    db_session.commit()
+    
+    # Add user_id to auth params
+    auth_params["user_id"] = str(test_user.id)
     
     # Make request to authorize endpoint
     response = client.get("/api/oauth/authorize", params=auth_params, allow_redirects=False)
@@ -84,12 +99,12 @@ def test_authorize_endpoint(db: Session):
     code = query["code"][0]
     
     # Verify code exists in database
-    db_code = db.query(AuthorizationCode).filter(AuthorizationCode.code == code).first()
+    db_code = db_session.query(AuthorizationCode).filter(AuthorizationCode.code == code).first()
     assert db_code is not None
     assert db_code.client_id == test_client.id
     assert db_code.redirect_uri == redirect_uri
 
-def test_token_endpoint(db: Session):
+def test_token_endpoint(db_session: Session, override_get_db):
     """Test token exchange endpoint."""
     # Create a test client
     client_id = uuid.uuid4()
@@ -103,20 +118,33 @@ def test_token_endpoint(db: Session):
         redirect_uris=[redirect_uri],
         scopes=["memories:read", "memories:write"]
     )
-    db.add(test_client)
-    db.commit()
+    db_session.add(test_client)
+    db_session.commit()
     
     # Create test user
-    user_id = uuid.uuid4()
+    test_user = User(
+        email="test_oauth@example.com",
+        username="test_oauth_user",
+        hashed_password="test_password"
+    )
+    db_session.add(test_user)
+    db_session.commit()
+    
+    user_id = test_user.id
+    
+    # Create code verifier and code challenge for PKCE
+    code_verifier = "test_verifier_for_oauth_endpoint_test"
+    hash_object = hashlib.sha256(code_verifier.encode())
+    code_challenge = base64.urlsafe_b64encode(hash_object.digest()).decode().rstrip("=")
     
     # Create authorization code
     code = create_authorization_code(
-        db=db,
+        db=db_session,
         client_id=test_client.id,
         user_id=user_id,
         redirect_uri=redirect_uri,
         scope="memories:read",
-        code_challenge="test_challenge",
+        code_challenge=code_challenge,
         code_challenge_method="S256"
     )
     
@@ -127,10 +155,14 @@ def test_token_endpoint(db: Session):
         "redirect_uri": redirect_uri,
         "client_id": str(client_id),
         "client_secret": client_secret,
-        "code_verifier": "test_verifier"
+        "code_verifier": code_verifier
     }
     
     response = client.post("/api/oauth/token", data=token_data)
+    
+    # Print response content for debugging
+    print(f"Response status: {response.status_code}")
+    print(f"Response content: {response.json()}")
     
     # Check response
     assert response.status_code == 200
@@ -141,7 +173,7 @@ def test_token_endpoint(db: Session):
     assert "scope" in data
     
     # Verify token exists in database
-    db_token = db.query(Token).filter(Token.access_token == data["access_token"]).first()
+    db_token = db_session.query(Token).filter(Token.access_token == data["access_token"]).first()
     assert db_token is not None
     assert db_token.client_id == test_client.id
     assert db_token.user_id == user_id

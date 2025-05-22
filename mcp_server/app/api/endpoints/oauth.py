@@ -91,6 +91,7 @@ async def authorize(
     state: str,
     code_challenge: Optional[str] = None,
     code_challenge_method: Optional[str] = None,
+    user_id: Optional[uuid.UUID] = None,
     db: Session = Depends(get_db)
 ):
     """
@@ -150,7 +151,7 @@ async def authorize(
         auth_code = create_authorization_code(
             db=db,
             client_id=client.id,
-            user_id=uuid.UUID('00000000-0000-0000-0000-000000000000'),  # Placeholder - will be replaced with real user ID
+            user_id=user_id or uuid.UUID('00000000-0000-0000-0000-000000000000'),  # Use provided user_id or fallback to placeholder
             redirect_uri=redirect_uri,
             scope=scope,
             code_challenge=code_challenge,

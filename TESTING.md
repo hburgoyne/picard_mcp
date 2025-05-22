@@ -143,22 +143,25 @@ The Django test runner creates a test database for the duration of the tests, en
 
 We have implemented tests to verify the OAuth 2.0 core setup:
 
-1. **OAuth Client Registration Test**:
+1. **OAuth Client Registration Test** (`test_register_client`):
    - Verifies that OAuth clients can be registered via the API
    - Tests validation of client data
    - Checks that client credentials are generated properly
+   - Verifies client is saved in the database
 
-2. **OAuth Authorization Endpoint Test**:
+2. **OAuth Authorization Endpoint Test** (`test_authorize_endpoint`):
    - Verifies the authorization flow
    - Tests redirection with authorization code
    - Validates state parameter handling
    - Checks PKCE challenge handling
+   - Verifies user ID is properly used in authorization
 
-3. **OAuth Token Endpoint Test**:
+3. **OAuth Token Endpoint Test** (`test_token_endpoint`):
    - Verifies authorization code exchange for tokens
    - Tests token response format
    - Validates client credentials requirement
-   - Checks token storage in database
+   - Checks PKCE code verifier validation
+   - Verifies token storage in database
 
 ### Running OAuth Tests
 

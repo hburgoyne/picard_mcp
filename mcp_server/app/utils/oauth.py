@@ -73,7 +73,7 @@ def create_authorization_code(
     
     Args:
         db: Database session
-        client_id: OAuth client ID
+        client_id: OAuth client ID (this is the client_id field, not the id primary key)
         user_id: User ID
         redirect_uri: Redirect URI
         scope: Requested scopes
@@ -81,18 +81,24 @@ def create_authorization_code(
         code_challenge_method: PKCE code challenge method
         
     Returns:
-        Authorization code
+        Authorization code string
     """
-    # Generate random authorization code
+    # Find the client by client_id to get its primary key id
+    client = db.query(OAuthClient).filter(OAuthClient.client_id == client_id).first()
+    
+    if not client:
+        raise ValueError(f"No client found with client_id: {client_id}")
+    
+    # Generate a random code
     code = secrets.token_urlsafe(32)
     
     # Set expiration time (10 minutes)
     expires_at = datetime.utcnow() + timedelta(minutes=10)
     
-    # Create and store authorization code
+    # Create and store authorization code using the client's primary key id
     auth_code = AuthorizationCode(
         code=code,
-        client_id=client_id,
+        client_id=client.id,  # Use the primary key id, not the client_id field
         user_id=user_id,
         redirect_uri=redirect_uri,
         scope=scope,
@@ -175,13 +181,19 @@ def create_access_token(
     
     Args:
         db: Database session
-        client_id: OAuth client ID
+        client_id: OAuth client ID (this is the client_id field, not the id primary key)
         user_id: User ID
         scope: Granted scopes
         
     Returns:
         Tuple of (access_token, refresh_token, expires_in)
     """
+    # Find the client by client_id to get its primary key id
+    client = db.query(OAuthClient).filter(OAuthClient.client_id == client_id).first()
+    
+    if not client:
+        raise ValueError(f"No client found with client_id: {client_id}")
+    
     # Generate random tokens
     access_token = secrets.token_urlsafe(32)
     refresh_token = secrets.token_urlsafe(32)
@@ -190,11 +202,11 @@ def create_access_token(
     access_token_expires_at = datetime.utcnow() + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     refresh_token_expires_at = datetime.utcnow() + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
     
-    # Create and store tokens
+    # Create and store token using the client's primary key id
     token = Token(
         access_token=access_token,
         refresh_token=refresh_token,
-        client_id=client_id,
+        client_id=client.id,  # Use the primary key id, not the client_id field
         user_id=user_id,
         scope=scope,
         access_token_expires_at=access_token_expires_at.isoformat(),
@@ -237,26 +249,35 @@ def refresh_access_token(
         refresh_token: Refresh token
         
     Returns:
-        Tuple of (new_access_token, same_refresh_token, expires_in) if valid,
+        Tuple of (new_access_token, new_refresh_token, expires_in) if valid,
         None otherwise
     """
     # Find the token by refresh token
     token_obj = db.query(Token).filter(Token.refresh_token == refresh_token).first()
     
-    if not token_obj or token_obj.is_refresh_token_expired or token_obj.is_revoked:
+    if not token_obj:
+        return None
+        
+    # Check if refresh token has expired
+    refresh_expires_at = datetime.fromisoformat(token_obj.refresh_token_expires_at)
+    if datetime.utcnow() > refresh_expires_at:
         return None
     
-    # Generate new access token
+    # Generate new access token and refresh token (token rotation)
     new_access_token = secrets.token_urlsafe(32)
+    new_refresh_token = secrets.token_urlsafe(32)
     
-    # Update expiration time
+    # Update expiration times
     access_token_expires_at = datetime.utcnow() + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    refresh_token_expires_at = datetime.utcnow() + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
     
-    # Update token
+    # Update token with new values
     token_obj.access_token = new_access_token
+    token_obj.refresh_token = new_refresh_token
     token_obj.access_token_expires_at = access_token_expires_at.isoformat()
+    token_obj.refresh_token_expires_at = refresh_token_expires_at.isoformat()
     
     db.commit()
     
-    # Return new access token and existing refresh token
-    return new_access_token, token_obj.refresh_token, settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60
+    # Return new access token and new refresh token
+    return new_access_token, new_refresh_token, settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60

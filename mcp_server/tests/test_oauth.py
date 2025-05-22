@@ -143,8 +143,33 @@ def test_authorize_endpoint(db_session: Session, override_get_db):
     # Add user_id to auth params
     auth_params["user_id"] = str(test_user.id)
     
+    # Mock the get_current_user function to return our test user
+    from app.utils import auth
+    import pytest
+    monkeypatch = pytest.MonkeyPatch()
+    monkeypatch.setattr(auth, "get_current_user", lambda *args, **kwargs: test_user)
+    
     # Make request to authorize endpoint
     response = client.get("/api/oauth/authorize", params=auth_params, allow_redirects=False)
+    
+    # Check for 200 OK (consent page)
+    assert response.status_code == 200
+    assert "consent.html" in response.template.name
+    assert test_client.client_name in response.text
+    
+    # Now simulate the user approving the consent
+    consent_data = {
+        "client_id": str(client_id),
+        "redirect_uri": redirect_uri,
+        "scope": "memories:read",
+        "state": "test_state",
+        "response_type": "code",
+        "decision": "approve",
+        "code_challenge": "test_challenge",
+        "code_challenge_method": "S256"
+    }
+    
+    response = client.post("/api/oauth/consent", data=consent_data, allow_redirects=False)
     
     # Check for redirect
     assert response.status_code == 302
@@ -163,8 +188,19 @@ def test_authorize_endpoint(db_session: Session, override_get_db):
     # Verify code exists in database
     db_code = db_session.query(AuthorizationCode).filter(AuthorizationCode.code == code).first()
     assert db_code is not None
-    assert db_code.client_id == test_client.id
+    
+    # Get the client associated with this authorization code
+    auth_code_client = db_session.query(OAuthClient).filter(
+        OAuthClient.id == db_code.client_id
+    ).first()
+    
+    assert auth_code_client is not None
+    assert str(auth_code_client.client_id) == str(client_id)
+    assert auth_code_client.client_name == test_client.client_name
     assert db_code.redirect_uri == redirect_uri
+    
+    # Clean up
+    monkeypatch.undo()
 
 def test_token_endpoint(db_session: Session, override_get_db):
     """Test token exchange endpoint."""
@@ -202,7 +238,7 @@ def test_token_endpoint(db_session: Session, override_get_db):
     # Create authorization code
     code = create_authorization_code(
         db=db_session,
-        client_id=test_client.id,
+        client_id=test_client.client_id,
         user_id=user_id,
         redirect_uri=redirect_uri,
         scope="memories:read",

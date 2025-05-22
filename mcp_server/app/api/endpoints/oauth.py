@@ -98,7 +98,7 @@ async def consent(
         # Create authorization code
         auth_code = create_authorization_code(
             db=db,
-            client_id=client.id,
+            client_id=client.client_id,  # Use client_id field, not the primary key id
             user_id=current_user.id,
             redirect_uri=redirect_uri,
             scope=scope,
@@ -346,7 +346,7 @@ async def token(
             # Create tokens
             access_token, refresh_token, expires_in = create_access_token(
                 db=db,
-                client_id=client.id,
+                client_id=client.client_id,  # Use client_id field, not the primary key id
                 user_id=auth_code.user_id,
                 scope=auth_code.scope
             )

@@ -5,16 +5,69 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List, Optional
 import uuid
+import secrets
 
 from app.db.session import get_db
 from app.models.oauth import OAuthClient
 from app.models.user import User
-from app.schemas.oauth import OAuthClientCreate, OAuthClientUpdate, OAuthClient as OAuthClientSchema
+from app.schemas.oauth import OAuthClientCreate, OAuthClientUpdate, OAuthClient as OAuthClientSchema, OAuthClientRegisterResponse
 from app.core.config import settings
 from app.utils.logger import logger
 from app.utils.admin import verify_admin_credentials
+from app.utils.oauth import OAuthError
 
 router = APIRouter()
+
+@router.post("/clients/register", response_model=OAuthClientRegisterResponse)
+async def register_client(
+    client_data: OAuthClientCreate,
+    db: Session = Depends(get_db),
+    admin_user: User = Depends(verify_admin_credentials)
+):
+    """
+    Register a new OAuth client.
+    
+    Args:
+        client_data: Client registration data
+        db: Database session
+        admin_user: Authenticated admin user
+        
+    Returns:
+        Registered client information with client credentials
+    """
+    try:
+        # Generate client secret
+        client_secret = secrets.token_urlsafe(32)
+        
+        # Create new OAuth client
+        new_client = OAuthClient(
+            client_id=uuid.uuid4(),
+            client_secret=client_secret,
+            client_name=client_data.client_name,
+            redirect_uris=client_data.redirect_uris,
+            scopes=client_data.scopes,
+            is_confidential=client_data.is_confidential
+        )
+        
+        db.add(new_client)
+        db.commit()
+        db.refresh(new_client)
+        
+        logger.info(f"Registered new OAuth client: {new_client.client_name}")
+        
+        # Return client credentials
+        return {
+            "client_id": str(new_client.client_id),
+            "client_secret": new_client.client_secret,
+            "client_name": new_client.client_name,
+            "redirect_uris": new_client.redirect_uris,
+            "scopes": new_client.scopes,
+            "is_confidential": new_client.is_confidential
+        }
+    except Exception as e:
+        logger.error(f"Error registering OAuth client: {str(e)}")
+        raise OAuthError("client_registration_failed", "Failed to register OAuth client")
+
 
 @router.get("/clients", response_model=List[OAuthClientSchema])
 async def list_oauth_clients(

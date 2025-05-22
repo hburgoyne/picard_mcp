@@ -10,8 +10,6 @@ import secrets
 import uuid
 
 from app.schemas.oauth import (
-    OAuthClientCreate,
-    OAuthClientRegisterResponse, 
     AuthorizationRequest,
     TokenRequest
 )
@@ -31,55 +29,6 @@ from app.utils.oauth import (
 
 router = APIRouter()
 
-@router.post("/register", response_model=OAuthClientRegisterResponse)
-async def register_client(
-    client_data: OAuthClientCreate,
-    db: Session = Depends(get_db)
-):
-    """
-    Register a new OAuth client.
-    
-    Args:
-        client_data: Client registration data
-        db: Database session
-        
-    Returns:
-        Registered client information with client credentials
-    """
-    try:
-        # Generate client secret
-        client_secret = secrets.token_urlsafe(32)
-        
-        # Create new OAuth client
-        new_client = OAuthClient(
-            client_id=uuid.uuid4(),
-            client_secret=client_secret,
-            client_name=client_data.client_name,
-            redirect_uris=client_data.redirect_uris,
-            scopes=client_data.scopes,
-            is_confidential=client_data.is_confidential
-        )
-        
-        db.add(new_client)
-        db.commit()
-        db.refresh(new_client)
-        
-        # Return client credentials
-        return {
-            "client_id": new_client.client_id,
-            "client_secret": client_secret,
-            "client_name": new_client.client_name,
-            "redirect_uris": new_client.redirect_uris,
-            "scopes": new_client.scopes,
-            "is_confidential": new_client.is_confidential
-        }
-        
-    except Exception as e:
-        logger.error(f"Error registering client: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Error registering OAuth client"
-        )
 
 @router.get("/authorize")
 async def authorize(

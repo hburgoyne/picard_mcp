@@ -101,16 +101,15 @@ ADMIN_EMAIL=your_email@example.com
 
 ### Register a new OAuth client for Django
 
-To register the Django client with the MCP server, use the provided script:
+To register a new OAuth client for the Django application, run the following command:
 
 ```bash
-# From the django_client directory
 docker-compose exec django_client python register_oauth_client.py
 ```
 
-This will:
-1. Register a new OAuth client with the MCP server
-2. Automatically update the Django client's .env file with the new client credentials
+This will register a new OAuth client with the MCP server using admin authentication and update the Django client's `.env` file with the new client credentials.
+
+**Note**: This script requires admin credentials to access the protected registration endpoint. The script will use the admin credentials from the environment variables `ADMIN_USERNAME` and `ADMIN_PASSWORD`. If these are not set, it will use the default credentials (admin/adminpassword).
 
 ### Update an existing OAuth client
 
@@ -137,6 +136,17 @@ You may need to update OAuth client credentials in the following scenarios:
 The MCP server provides admin endpoints for managing OAuth clients. These endpoints require HTTP Basic Authentication with your admin credentials:
 
 ```bash
+# Register a new client
+curl -X POST "http://localhost:8001/api/admin/clients/register" \
+  -u "admin:adminpassword" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "client_name": "New Client",
+    "redirect_uris": ["http://localhost:8000/callback"],
+    "scopes": ["memories:read", "memories:write"],
+    "is_confidential": true
+  }'
+
 # List all registered clients
 curl -X GET "http://localhost:8001/api/admin/clients" \
   -u "admin:adminpassword"

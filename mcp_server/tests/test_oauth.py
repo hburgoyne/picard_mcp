@@ -73,8 +73,8 @@ def non_admin_auth_header():
     credentials = base64.b64encode(b"testuser:userpassword").decode("utf-8")
     return {"Authorization": f"Basic {credentials}"}
 
-def test_register_client(db_session: Session, override_get_db):
-    """Test OAuth client registration."""
+def test_register_client(db_session: Session, override_get_db, admin_user, admin_auth_header):
+    """Test OAuth client registration via admin endpoint."""
     client_data = {
         "client_name": "Test Client",
         "redirect_uris": ["http://localhost/callback"],
@@ -82,7 +82,8 @@ def test_register_client(db_session: Session, override_get_db):
         "is_confidential": True
     }
     
-    response = client.post("/api/oauth/register", json=client_data)
+    # Use the admin endpoint with authentication
+    response = client.post("/api/admin/clients/register", json=client_data, headers=admin_auth_header)
     
     assert response.status_code == 200
     data = response.json()
@@ -97,6 +98,10 @@ def test_register_client(db_session: Session, override_get_db):
     db_client = db_session.query(OAuthClient).filter(OAuthClient.client_id == uuid.UUID(data["client_id"])).first()
     assert db_client is not None
     assert db_client.client_name == client_data["client_name"]
+    
+    # Test that registration requires authentication
+    response = client.post("/api/admin/clients/register", json=client_data)
+    assert response.status_code == 401
 
 def test_authorize_endpoint(db_session: Session, override_get_db):
     """Test authorization endpoint."""

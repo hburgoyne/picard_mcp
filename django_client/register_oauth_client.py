@@ -4,6 +4,7 @@ import requests
 import json
 import sys
 import argparse
+import base64
 from dotenv import load_dotenv
 
 def register_oauth_client(update=False, client_id=None):
@@ -16,6 +17,14 @@ def register_oauth_client(update=False, client_id=None):
     # MCP_SERVER_INTERNAL_URL is for container-to-container communication
     # MCP_SERVER_URL is for external access (from browser)
     mcp_server_url = os.getenv('MCP_SERVER_INTERNAL_URL', 'http://mcp_server:8000')
+    
+    # Get admin credentials
+    admin_username = os.getenv('ADMIN_USERNAME', 'admin')
+    admin_password = os.getenv('ADMIN_PASSWORD', 'adminpassword')
+    
+    # Create basic auth header
+    auth_credentials = f"{admin_username}:{admin_password}"
+    auth_header = base64.b64encode(auth_credentials.encode()).decode()
     
     # Prepare client registration data
     client_data = {
@@ -32,20 +41,26 @@ def register_oauth_client(update=False, client_id=None):
         
     print(f'Client data: {json.dumps(client_data, indent=2)}')
     
+    # Prepare headers with authentication
+    headers = {
+        'Content-Type': 'application/json',
+        'Authorization': f'Basic {auth_header}'
+    }
+    
     try:
         if update and client_id:
             # Send update request to MCP server
             response = requests.put(
                 f"{mcp_server_url}/api/admin/clients/{client_id}",
                 json=client_data,
-                headers={'Content-Type': 'application/json'}
+                headers=headers
             )
         else:
             # Send registration request to MCP server
             response = requests.post(
-                f"{mcp_server_url}/api/oauth/register",
+                f"{mcp_server_url}/api/admin/clients/register",
                 json=client_data,
-                headers={'Content-Type': 'application/json'}
+                headers=headers
             )
         
         # Check response

@@ -174,3 +174,39 @@ curl -X DELETE "http://localhost:8001/api/admin/clients/CLIENT_ID" \
 Replace `admin:adminpassword` with your actual admin credentials if you've customized them.
 
 ---
+
+## OAuth 2.0 Flow
+
+The Picard MCP system implements a complete OAuth 2.0 authorization flow with PKCE support. Here's how to test the full flow:
+
+### Testing the Complete OAuth Flow
+
+1. Ensure both the MCP server and Django client are running:
+   ```bash
+   docker-compose up -d
+   ```
+
+2. Register a test client (if not already registered):
+   ```bash
+   docker-compose exec django_client python register_oauth_client.py
+   ```
+
+3. Log in to the Django client at http://localhost:8000/
+
+4. Navigate to the OAuth authorization endpoint:
+   ```
+   http://localhost:8000/oauth/authorize/
+   ```
+
+5. You'll be redirected to the MCP server's consent page where you can approve or deny the requested permissions
+
+6. After approval, you'll be redirected back to the Django client's dashboard with a success message
+
+### OAuth Flow Implementation Details
+
+- **Authorization Code Flow with PKCE**: The system uses the authorization code flow with PKCE (Proof Key for Code Exchange) for enhanced security.
+- **CSRF Protection**: The state parameter is used to prevent cross-site request forgery attacks.
+- **Token Management**: Access tokens and refresh tokens are properly managed and stored in the database.
+- **Token Refresh**: The system automatically refreshes expired tokens when needed.
+
+---

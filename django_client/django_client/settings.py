@@ -119,5 +119,5 @@ MCP_SERVER_INTERNAL_URL = os.getenv('MCP_SERVER_INTERNAL_URL', 'http://mcp_serve
 # OAuth settings
 OAUTH_CLIENT_ID = os.getenv('OAUTH_CLIENT_ID', '550e8400-e29b-41d4-a716-446655440000')
 OAUTH_CLIENT_SECRET = os.getenv('OAUTH_CLIENT_SECRET', 'a_strong_random_secret_at_least_32_characters')
-OAUTH_REDIRECT_URI = os.getenv('OAUTH_REDIRECT_URI', 'http://localhost:8000/oauth/callback')
+OAUTH_REDIRECT_URI = os.getenv('OAUTH_REDIRECT_URI', 'http://localhost:8000/oauth/callback/')
 OAUTH_SCOPES = os.getenv('OAUTH_SCOPES', 'memories:read memories:write')

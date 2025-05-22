@@ -33,6 +33,9 @@ from app.utils.auth import get_current_user, require_authenticated_user
 from app.utils.scope_descriptions import get_scope_descriptions
 from app.core.config import settings
 
+# Import templates directly
+from app.main import templates
+
 router = APIRouter()
 
 @router.post("/consent")
@@ -230,10 +233,10 @@ async def authorize(
         # Render the consent page
         scopes_with_descriptions = get_scope_descriptions(scope)
         logger.info(f"Rendering consent page with scopes: {scopes_with_descriptions}")
-        logger.info(f"Template directory: {settings.TEMPLATES.directory}")
         
         try:
-            return settings.TEMPLATES.TemplateResponse(
+            # Use the templates object directly
+            return templates.TemplateResponse(
                 "consent.html",
                 {
                     "request": request,

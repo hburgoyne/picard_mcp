@@ -9,12 +9,16 @@ from django.utils import timezone
 
 import requests
 import json
-import uuid
 import secrets
-import hashlib
 import base64
+import hashlib
+import uuid
+import logging
 from datetime import datetime, timedelta
 from urllib.parse import urlencode
+
+# Set up logger
+logger = logging.getLogger(__name__)
 
 from .models import OAuthToken, Memory, UserProfile
 from .forms import MemoryForm, MemorySearchForm, UserQueryForm, UserRegistrationForm, UserProfileForm
@@ -103,7 +107,10 @@ def oauth_callback(request):
     }
     
     try:
-        response = requests.post(f"{settings.MCP_SERVER_URL}/api/oauth/token", data=token_data)
+        # Use the internal URL for server-to-server communication within Docker
+        token_url = f"{settings.MCP_SERVER_INTERNAL_URL}/api/oauth/token"
+        logger.info(f"Requesting token from: {token_url}")
+        response = requests.post(token_url, data=token_data)
         response.raise_for_status()
         token_info = response.json()
         
@@ -147,8 +154,10 @@ def refresh_token(request):
             'client_secret': settings.OAUTH_CLIENT_SECRET,
         }
         
-        # Send token refresh request
-        response = requests.post(f"{settings.MCP_SERVER_URL}/api/oauth/token", data=token_data)
+        # Send token refresh request using the internal URL for Docker networking
+        token_url = f"{settings.MCP_SERVER_INTERNAL_URL}/api/oauth/token"
+        logger.info(f"Refreshing token from: {token_url}")
+        response = requests.post(token_url, data=token_data)
         response.raise_for_status()
         token_info = response.json()
         

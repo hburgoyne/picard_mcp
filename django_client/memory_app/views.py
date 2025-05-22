@@ -74,7 +74,8 @@ def oauth_authorize(request):
         'code_challenge_method': 'S256',
     }
     
-    authorization_url = f"{settings.MCP_SERVER_URL}/authorize?{urlencode(params)}"
+    # Use the correct path for the authorization endpoint
+    authorization_url = f"{settings.MCP_SERVER_URL}/api/oauth/authorize?{urlencode(params)}"
     return redirect(authorization_url)
 
 @login_required
@@ -102,7 +103,7 @@ def oauth_callback(request):
     }
     
     try:
-        response = requests.post(f"{settings.MCP_SERVER_URL}/token", data=token_data)
+        response = requests.post(f"{settings.MCP_SERVER_URL}/api/oauth/token", data=token_data)
         response.raise_for_status()
         token_info = response.json()
         
@@ -146,7 +147,8 @@ def refresh_token(request):
             'client_secret': settings.OAUTH_CLIENT_SECRET,
         }
         
-        response = requests.post(f"{settings.MCP_SERVER_URL}/token", data=token_data)
+        # Send token refresh request
+        response = requests.post(f"{settings.MCP_SERVER_URL}/api/oauth/token", data=token_data)
         response.raise_for_status()
         token_info = response.json()
         

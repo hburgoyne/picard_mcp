@@ -33,6 +33,10 @@ app = FastAPI(
 # Configure Jinja2 templates
 templates = Jinja2Templates(directory="app/templates")
 
+# Make templates available globally
+from app.core.config import settings
+settings.TEMPLATES = templates
+
 # Mount static files
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 

@@ -31,7 +31,7 @@ from app.utils.oauth import (
 )
 from app.utils.auth import get_current_user, require_authenticated_user
 from app.utils.scope_descriptions import get_scope_descriptions
-from app.main import templates
+from app.core.config import settings
 
 router = APIRouter()
 
@@ -215,33 +215,46 @@ async def authorize(
             code_challenge_method = "S256"
         
         # Check if user is authenticated
+        logger.info(f"Authorization request: User authenticated: {current_user is not None}")
         if not current_user:
+            logger.info("User not authenticated, redirecting to login_required error")
             # TODO: Implement a proper login page and redirect back to authorization
             # For now, return an error
             return RedirectResponse(
                 f"{redirect_uri}?error=login_required&state={state}",
                 status_code=status.HTTP_302_FOUND
             )
+        else:
+            logger.info(f"User authenticated: {current_user.username if hasattr(current_user, 'username') else current_user.id}")
         
         # Render the consent page
         scopes_with_descriptions = get_scope_descriptions(scope)
+        logger.info(f"Rendering consent page with scopes: {scopes_with_descriptions}")
+        logger.info(f"Template directory: {settings.TEMPLATES.directory}")
         
-        return templates.TemplateResponse(
-            "consent.html",
-            {
-                "request": request,
-                "client_id": client_id,
-                "client_name": client.client_name,
-                "redirect_uri": redirect_uri,
-                "scope": scope,
-                "state": state,
-                "response_type": response_type,
-                "code_challenge": code_challenge,
-                "code_challenge_method": code_challenge_method,
-                "scopes_with_descriptions": scopes_with_descriptions,
-                "action_url": f"{request.url.scheme}://{request.url.netloc}{settings.API_V1_STR}/oauth/consent"
-            }
-        )
+        try:
+            return settings.TEMPLATES.TemplateResponse(
+                "consent.html",
+                {
+                    "request": request,
+                    "client_id": client_id,
+                    "client_name": client.client_name,
+                    "redirect_uri": redirect_uri,
+                    "scope": scope,
+                    "state": state,
+                    "response_type": response_type,
+                    "code_challenge": code_challenge,
+                    "code_challenge_method": code_challenge_method,
+                    "scopes_with_descriptions": scopes_with_descriptions,
+                    "action_url": f"{request.url.scheme}://{request.url.netloc}{settings.API_V1_STR}/oauth/consent"
+                }
+            )
+        except Exception as e:
+            logger.error(f"Error rendering consent template: {str(e)}")
+            return RedirectResponse(
+                f"{redirect_uri}?error=server_error&error_description=Error+rendering+consent+page&state={state}",
+                status_code=status.HTTP_302_FOUND
+            )
         
     except OAuthError as e:
         # Handle OAuth-specific errors

@@ -1,5 +1,5 @@
 from pydantic_settings import BaseSettings
-from typing import Optional, List
+from typing import Optional, List, Any
 import os
 from dotenv import load_dotenv
 
@@ -45,5 +45,8 @@ class Settings(BaseSettings):
     ADMIN_USERNAME: str = os.getenv("ADMIN_USERNAME", "admin")
     ADMIN_PASSWORD: str = os.getenv("ADMIN_PASSWORD", "adminpassword")
     ADMIN_EMAIL: str = os.getenv("ADMIN_EMAIL", "admin@example.com")
+    
+    # Template settings (set at runtime)
+    TEMPLATES: Any = None
 
 settings = Settings()

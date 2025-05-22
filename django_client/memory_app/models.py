@@ -19,6 +19,21 @@ class OAuthToken(models.Model):
     def is_expired(self):
         """Check if the access token has expired."""
         return datetime.now().astimezone() > self.expires_at
+        
+    @classmethod
+    def get_for_user(cls, user):
+        """Get the OAuth token for a user.
+        
+        Args:
+            user: The user to get the token for.
+            
+        Returns:
+            The OAuthToken instance for the user, or None if no token exists.
+        """
+        try:
+            return cls.objects.get(user=user)
+        except cls.DoesNotExist:
+            return None
 
 class Memory(models.Model):
     """Model to store local copies of memories from the MCP server."""

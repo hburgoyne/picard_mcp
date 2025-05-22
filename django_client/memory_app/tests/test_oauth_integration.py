@@ -190,19 +190,19 @@ class OAuthTokenModelTest(TestCase):
             scope='memories:read'
         )
         
-        # Create a valid token
-        valid_time = timezone.now() + timedelta(minutes=5)
-        valid_token = OAuthToken.objects.create(
-            user=self.user,
-            access_token='valid_token',
-            refresh_token='refresh_token2',
-            expires_at=valid_time,
-            scope='memories:read'
-        )
-        
-        # Test is_expired property
+        # Test is_expired property for expired token
         self.assertTrue(expired_token.is_expired)
-        self.assertFalse(valid_token.is_expired)
+        
+        # Update the token to be valid
+        valid_time = timezone.now() + timedelta(minutes=5)
+        expired_token.expires_at = valid_time
+        expired_token.access_token = 'valid_token'
+        expired_token.refresh_token = 'refresh_token2'
+        expired_token.save()
+        
+        # Refresh from database and test again
+        expired_token.refresh_from_db()
+        self.assertFalse(expired_token.is_expired)
         
     def test_token_get_for_user(self):
         """Test the get_for_user class method of OAuthToken."""

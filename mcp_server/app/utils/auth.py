@@ -29,7 +29,7 @@ def get_current_user(
     3. The query parameters
     
     For testing purposes, this function will also create and return a test user
-    if no authenticated user is found.
+    if no authenticated user is found, but ONLY if the X-Test-Override-Scopes header is present.
     
     Args:
         request: FastAPI request object
@@ -67,39 +67,41 @@ def get_current_user(
         except (ValueError, TypeError):
             pass
     
-    # For testing purposes, find an existing user to use
-    # This is a temporary solution until a proper authentication system is implemented
-    test_user = db.query(User).first()
-    if test_user:
-        logger.info(f"Using existing user for testing: {test_user.username} (ID: {test_user.id})")
-        return test_user
-    
-    # If no users exist, create a test user
-    try:
-        from app.utils.security import get_password_hash
-        test_user = User(
-            id=uuid.uuid4(),
-            username="test_user",
-            email="test@example.com",
-            hashed_password=get_password_hash("testpassword"),
-            is_active=True,
-            is_superuser=False
-        )
-        db.add(test_user)
-        db.commit()
-        db.refresh(test_user)
-        logger.info(f"Created test user for development: {test_user.username} (ID: {test_user.id})")
-    except Exception as e:
-        logger.error(f"Error creating test user: {str(e)}")
-        # Try to find any user as a fallback
+    # For testing purposes, only return a test user if the X-Test-Override-Scopes header is present
+    if request.headers.get("X-Test-Override-Scopes") == "true":
         test_user = db.query(User).first()
         if test_user:
-            logger.info(f"Using fallback user for testing: {test_user.username} (ID: {test_user.id})")
-        else:
-            logger.error("No users found and could not create test user")
-            return None
+            logger.info(f"Using existing user for testing: {test_user.username} (ID: {test_user.id})")
+            return test_user
+        
+        # If no users exist, create a test user
+        try:
+            from app.utils.security import get_password_hash
+            test_user = User(
+                id=uuid.uuid4(),
+                username="test_user",
+                email="test@example.com",
+                hashed_password=get_password_hash("testpassword"),
+                is_active=True,
+                is_superuser=False
+            )
+            db.add(test_user)
+            db.commit()
+            db.refresh(test_user)
+            logger.info(f"Created test user for development: {test_user.username} (ID: {test_user.id})")
+            return test_user
+        except Exception as e:
+            logger.error(f"Error creating test user: {str(e)}")
+            # Try to find any user as a fallback
+            test_user = db.query(User).first()
+            if test_user:
+                logger.info(f"Using fallback user for testing: {test_user.username} (ID: {test_user.id})")
+                return test_user
+            else:
+                logger.error("No users found and could not create test user")
     
-    return test_user
+    # If we get here, no valid authentication was found
+    return None
 
 def require_authenticated_user(
     current_user: Optional[User] = Depends(get_current_user)

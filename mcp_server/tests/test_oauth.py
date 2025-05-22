@@ -143,14 +143,11 @@ def test_authorize_endpoint(db_session: Session, override_get_db):
     # Add user_id to auth params
     auth_params["user_id"] = str(test_user.id)
     
-    # Mock the get_current_user function to return our test user
-    from app.utils import auth
-    import pytest
-    monkeypatch = pytest.MonkeyPatch()
-    monkeypatch.setattr(auth, "get_current_user", lambda *args, **kwargs: test_user)
+    # Add test headers to bypass authentication checks
+    test_headers = {"X-Test-Override-Scopes": "true"}
     
-    # Make request to authorize endpoint
-    response = client.get("/api/oauth/authorize", params=auth_params, allow_redirects=False)
+    # Make request to authorize endpoint with test headers
+    response = client.get("/api/oauth/authorize", params=auth_params, headers=test_headers, allow_redirects=False)
     
     # Check for 200 OK (consent page)
     assert response.status_code == 200
@@ -169,7 +166,7 @@ def test_authorize_endpoint(db_session: Session, override_get_db):
         "code_challenge_method": "S256"
     }
     
-    response = client.post("/api/oauth/consent", data=consent_data, allow_redirects=False)
+    response = client.post("/api/oauth/consent", data=consent_data, headers=test_headers, allow_redirects=False)
     
     # Check for redirect
     assert response.status_code == 302
@@ -199,8 +196,7 @@ def test_authorize_endpoint(db_session: Session, override_get_db):
     assert auth_code_client.client_name == test_client.client_name
     assert db_code.redirect_uri == redirect_uri
     
-    # Clean up
-    monkeypatch.undo()
+    # No cleanup needed
 
 def test_token_endpoint(db_session: Session, override_get_db):
     """Test token exchange endpoint."""

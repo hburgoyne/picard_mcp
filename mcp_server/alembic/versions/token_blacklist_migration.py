@@ -12,7 +12,7 @@ from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
 revision = 'token_blacklist_migration'
-down_revision = None  # This should be updated to match your latest migration
+down_revision = '2d63c9b6d74a'  # Updated to chain with the existing head revision
 branch_labels = None
 depends_on = None
 

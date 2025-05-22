@@ -73,4 +73,94 @@ curl -X POST "http://localhost:8001/api/oauth/token" \
 ```
 
 ---
+
+## MCP Server Administration
+
+### Creating an Admin User
+
+Before you can use the admin endpoints, you need to create an admin user:
+
+```bash
+# Create an admin user with default credentials
+docker-compose exec mcp_server python scripts/create_admin_user.py
+```
+
+This will create an admin user with the following default credentials:
+- Username: admin
+- Password: adminpassword
+- Email: admin@example.com
+
+You can customize these credentials by setting the following environment variables in your .env file:
+```
+ADMIN_USERNAME=your_admin_username
+ADMIN_PASSWORD=your_secure_password
+ADMIN_EMAIL=your_email@example.com
+```
+
+## OAuth Client Registration and Management
+
+### Register a new OAuth client for Django
+
+To register the Django client with the MCP server, use the provided script:
+
+```bash
+# From the django_client directory
+docker-compose exec django_client python register_oauth_client.py
+```
+
+This will:
+1. Register a new OAuth client with the MCP server
+2. Automatically update the Django client's .env file with the new client credentials
+
+### Update an existing OAuth client
+
+If you need to update an existing client (e.g., to change redirect URIs or scopes):
+
+```bash
+# From the django_client directory
+docker-compose exec django_client python register_oauth_client.py --update --client-id YOUR_CLIENT_ID
+```
+
+Where `YOUR_CLIENT_ID` is the UUID of the client you want to update.
+
+### When to update OAuth client credentials
+
+You may need to update OAuth client credentials in the following scenarios:
+
+1. **Changing redirect URIs**: If you change the domain or path of your callback URL
+2. **Modifying scopes**: If you need to add or remove permissions
+3. **Security concerns**: If you suspect the client credentials have been compromised
+4. **Deployment changes**: When moving from development to production environments
+
+### Managing OAuth clients via Admin API
+
+The MCP server provides admin endpoints for managing OAuth clients. These endpoints require HTTP Basic Authentication with your admin credentials:
+
+```bash
+# List all registered clients
+curl -X GET "http://localhost:8001/api/admin/clients" \
+  -u "admin:adminpassword"
+
+# Get details for a specific client
+curl -X GET "http://localhost:8001/api/admin/clients/CLIENT_ID" \
+  -u "admin:adminpassword"
+
+# Update a client
+curl -X PUT "http://localhost:8001/api/admin/clients/CLIENT_ID" \
+  -u "admin:adminpassword" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "client_name": "Updated Client Name",
+    "redirect_uris": ["http://localhost:8000/new-callback"],
+    "scopes": ["memories:read", "memories:write"],
+    "is_confidential": true
+  }'
+
+# Delete a client
+curl -X DELETE "http://localhost:8001/api/admin/clients/CLIENT_ID" \
+  -u "admin:adminpassword"
+```
+
+Replace `admin:adminpassword` with your actual admin credentials if you've customized them.
+
 ---

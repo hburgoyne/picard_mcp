@@ -40,5 +40,10 @@ class Settings(BaseSettings):
     
     # MCP server settings
     MCP_ISSUER_URL: str = os.getenv("MCP_ISSUER_URL", "http://localhost:8001")
+    
+    # Admin settings
+    ADMIN_USERNAME: str = os.getenv("ADMIN_USERNAME", "admin")
+    ADMIN_PASSWORD: str = os.getenv("ADMIN_PASSWORD", "adminpassword")
+    ADMIN_EMAIL: str = os.getenv("ADMIN_EMAIL", "admin@example.com")
 
 settings = Settings()

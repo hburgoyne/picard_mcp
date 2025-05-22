@@ -3,16 +3,19 @@ import os
 import requests
 import json
 import sys
+import argparse
 from dotenv import load_dotenv
 
-def register_oauth_client():
+def register_oauth_client(update=False, client_id=None):
     """Register OAuth client with the MCP server."""
     # Load environment variables
     load_dotenv()
     
     # Get MCP server URL
-    # Use localhost with external port (8001) when running from host
-    mcp_server_url = os.getenv('MCP_SERVER_URL', 'http://localhost:8001')
+    # When running inside Docker, use the internal Docker network hostname
+    # MCP_SERVER_INTERNAL_URL is for container-to-container communication
+    # MCP_SERVER_URL is for external access (from browser)
+    mcp_server_url = os.getenv('MCP_SERVER_INTERNAL_URL', 'http://mcp_server:8000')
     
     # Prepare client registration data
     client_data = {
@@ -22,29 +25,53 @@ def register_oauth_client():
         'is_confidential': True
     }
     
-    print(f'Registering OAuth client with MCP server at {mcp_server_url}')
+    if update and client_id:
+        print(f'Updating OAuth client with ID: {client_id} at {mcp_server_url}')
+    else:
+        print(f'Registering new OAuth client with MCP server at {mcp_server_url}')
+        
     print(f'Client data: {json.dumps(client_data, indent=2)}')
     
     try:
-        # Send registration request to MCP server
-        response = requests.post(
-            f"{mcp_server_url}/api/oauth/register",
-            json=client_data,
-            headers={'Content-Type': 'application/json'}
-        )
+        if update and client_id:
+            # Send update request to MCP server
+            response = requests.put(
+                f"{mcp_server_url}/api/admin/clients/{client_id}",
+                json=client_data,
+                headers={'Content-Type': 'application/json'}
+            )
+        else:
+            # Send registration request to MCP server
+            response = requests.post(
+                f"{mcp_server_url}/api/oauth/register",
+                json=client_data,
+                headers={'Content-Type': 'application/json'}
+            )
         
         # Check response
         if response.status_code == 200 or response.status_code == 201:
             result = response.json()
             
-            print('OAuth client registered successfully!')
-            print(f'Client ID: {result["client_id"]}')
-            print(f'Client Secret: {result["client_secret"]}')
+            if update and client_id:
+                print('OAuth client updated successfully!')
+                print(f'Client ID: {result["client_id"]}')
+                # When updating, we don't get a new client secret
+                if "client_secret" in result:
+                    print(f'Client Secret: {result["client_secret"]}')
+                    # Update .env file with new client credentials
+                    update_env_file(result["client_id"], result["client_secret"])
+                    print('Updated .env file with new client credentials')
+                else:
+                    print('Client secret unchanged')
+            else:
+                print('OAuth client registered successfully!')
+                print(f'Client ID: {result["client_id"]}')
+                print(f'Client Secret: {result["client_secret"]}')
+                # Update .env file with new client credentials
+                update_env_file(result["client_id"], result["client_secret"])
+                print('Updated .env file with new client credentials')
             
-            # Update .env file with new client credentials
-            update_env_file(result["client_id"], result["client_secret"])
-            
-            print('Updated .env file with new client credentials')
+
             return True
         else:
             print(f'Error registering OAuth client: {response.status_code}')
@@ -78,5 +105,14 @@ def update_env_file(client_id, client_secret):
         f.writelines(updated_lines)
 
 if __name__ == '__main__':
-    success = register_oauth_client()
+    parser = argparse.ArgumentParser(description='Register or update OAuth client with MCP server')
+    parser.add_argument('--update', action='store_true', help='Update existing client instead of registering new one')
+    parser.add_argument('--client-id', type=str, help='Client ID to update (required with --update)')
+    args = parser.parse_args()
+    
+    if args.update and not args.client_id:
+        print('Error: --client-id is required when using --update')
+        sys.exit(1)
+    
+    success = register_oauth_client(update=args.update, client_id=args.client_id)
     sys.exit(0 if success else 1)

@@ -66,22 +66,22 @@ This document outlines the step-by-step implementation plan for the Picard MCP p
 - [x] Implement OAuth endpoint tests
 
 ### 3.2 Client Registration
-- [x] Implement client registration endpoint
-- [x] Create secure client credentials generation
+- [ ] Implement client registration endpoint
+- [ ] Create secure client credentials generation
 - [ ] Implement client management system
 - [ ] Add client registration script for Django client
 
 ### 3.3 Authorization Flow
-- [x] Implement authorization endpoint
+- [ ] Implement authorization endpoint
 - [ ] Create user consent page
-- [x] Implement CSRF protection for OAuth flows
-- [x] Add PKCE support
+- [ ] Implement CSRF protection for OAuth flows
+- [ ] Add PKCE support
 
 ### 3.4 Token Management
-- [x] Implement token exchange endpoint
+- [ ] Implement token exchange endpoint
 - [ ] Implement token refresh endpoint
-- [x] Implement token validation and introspection
-- [x] Create token storage and retrieval system
+- [ ] Implement token validation and introspection
+- [ ] Create token storage and retrieval system
 
 ### 3.5 Django OAuth Client Implementation
 - [ ] Implement OAuth 2.0 client with PKCE

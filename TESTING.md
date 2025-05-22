@@ -1,17 +1,59 @@
-### Document Purpose
-**TESTING.md:** Comprehensive guide to testing the application
-- Describes all implemented tests and their purposes
-- Instructions for running tests locally and in CI/CD
-- Documents test coverage and identifies areas needing additional testing
----
-
 # Picard MCP Testing Guide
 
-## Phase 1: Project Setup and Configuration Tests
+## Quick Start: Running All Tests
+
+To run all tests for the Picard MCP project (MCP server, Django client, and integration tests), follow these steps:
+
+### Prerequisites
+
+1. Ensure Docker and Docker Compose are installed
+2. Make sure all containers are running:
+   ```bash
+   docker-compose up -d
+   ```
+3. Install required Python dependencies for integration tests:
+   ```bash
+   pip install pytest selenium requests
+   ```
+4. Ensure you have Chrome WebDriver installed for browser automation tests
+
+### Run All Tests with One Command
+
+The easiest way to run all tests is with our all-in-one command:
+
+```bash
+python tests/test_oauth_integration.py --all
+```
+
+This will run:
+1. MCP server tests (FastAPI backend)
+2. Django client tests (web frontend)
+3. Integration tests (OAuth flow between services)
+
+### Running Tests Individually
+
+If you prefer to run tests separately:
+
+```bash
+# MCP server tests
+docker-compose exec mcp_server pytest -xvs
+
+# Django client tests
+docker exec picard_mcp-django_client python manage.py test
+
+# Integration tests
+python -m pytest tests/test_oauth_integration.py -v
+```
+
+---
+
+## Detailed Test Documentation
+
+### Environment Setup Tests
 
 ### Docker Environment Tests
 
-At this phase, the primary testing is to verify that the Docker environment is properly set up and all containers can start successfully.
+These tests verify that the Docker environment is properly set up and all containers can start successfully.
 
 #### Testing Docker Setup
 
@@ -39,10 +81,8 @@ At this phase, the primary testing is to verify that the Docker environment is p
    Both commands should return "1" if the database connections are working.
 
 4. **Web Server Access Test**:
-   - MCP Server: Visit http://localhost:8001/health in a browser or use `curl http://localhost:8001/health`
-   - Django Client: Visit http://localhost:8000/health in a browser or use `curl http://localhost:8000/health`
-   
-   Both should return a JSON response with status "healthy".
+   - MCP Server: Visit http://localhost:8001/docs in a browser or use `curl http://localhost:8001/health`
+   - Django Client: Visit http://localhost:8000 in a browser
 
 ### Environment Configuration Tests
 
@@ -72,70 +112,75 @@ These manual tests verify that the environment variables are properly loaded fro
    ```
    Verify that all required environment variables are loaded from the django_client/.env file.
 
-## Phase 2: Database Model Tests
+## MCP Server Tests
 
-### MCP Server Model Unit Tests
+### MCP Server Tests
 
-We have implemented unit tests for the database models created in Phase 2.2:
+The MCP server tests are organized into several categories:
 
-1. **User Model Tests** (`test_models_user.py`):
+#### Model Tests
+
+1. **User Model Tests**:
    - Test user creation with default values
    - Test unique constraints (email, username)
 
-2. **Memory Model Tests** (`test_models_memory.py`):
+2. **Memory Model Tests**:
    - Test memory creation with default values
    - Test the expiration date functionality
    - Test vector embeddings storage
    - Test user-memory relationships
 
-3. **OAuth Model Tests** (`test_models_oauth.py`):
+3. **OAuth Model Tests**:
    - Test OAuth client creation
    - Test authorization code creation and expiration
    - Test token creation and expiration
    - Test relationships between models
 
+#### OAuth Implementation Tests
+
+1. **OAuth Authorization Tests**:
+   - Test authorization endpoint with and without PKCE
+   - Test user consent flow
+   - Test authorization code generation
+
+2. **OAuth Token Tests**:
+   - Test token exchange with authorization code
+   - Test token refresh flow
+   - Test token validation
+
+#### Running MCP Server Tests
+
+```bash
+# Run all MCP server tests
+docker-compose exec mcp_server pytest -xvs
+
+# Run specific test files
+docker-compose exec mcp_server pytest -xvs tests/test_oauth.py
+docker-compose exec mcp_server pytest -xvs tests/test_oauth_pkce.py
+```
+
 ### Django Client Tests
 
-We have implemented tests for the Django client functionality, focusing on user authentication and profile management:
+The Django client tests focus on user authentication, profile management, and OAuth integration:
 
-1. **User Authentication Tests** (`test_user_auth.py`):
-   - Test user registration form validation
-   - Test user registration view
-   - Test automatic creation of user profiles
+1. **User Authentication Tests**:
+   - Test user registration and login
+   - Test profile management
 
-2. **User Profile Tests** (`test_user_profile.py`):
-   - Test profile view rendering
-   - Test profile form validation
-   - Test profile update functionality
+2. **OAuth Client Tests**:
+   - Test OAuth authorization flow
+   - Test token storage and management
+   - Test token refresh
 
-### Running the MCP Server Tests
-
-To run the MCP server model tests, use the provided script or command:
+#### Running Django Client Tests
 
 ```bash
-# Make sure the Docker containers are running
-docker-compose up -d
-
-# Run the MCP server tests using pytest
-docker-compose exec mcp_server pytest -xvs
-```
-
-### Running the Django Client Tests
-
-To run the Django client tests:
-
-```bash
-# Make sure the Docker containers are running
-docker-compose up -d
-
-# First, collect static files (only needed initially or after changes to static files)
+# Collect static files (only needed initially or after changes)
 docker exec picard_mcp-django_client python manage.py collectstatic --noinput
 
-# Then run the Django tests
+# Run all Django client tests
 docker exec picard_mcp-django_client python manage.py test
 ```
-
-The Django test runner creates a test database for the duration of the tests, ensuring that your development database remains untouched.
 
 ## Phase 3: OAuth 2.0 Implementation Tests
 
@@ -210,45 +255,11 @@ We have implemented tests for the Django client's OAuth integration:
    - Tests token retrieval methods
    - Validates token management
 
-### Running OAuth Tests
+## OAuth Integration Tests
 
-To run the OAuth-specific tests:
+The integration tests verify the complete OAuth flow between the MCP server and Django client, ensuring that both services work together correctly.
 
-```bash
-# Make sure the Docker containers are running
-docker-compose up -d
-
-# Run the OAuth tests using pytest
-docker exec picard_mcp-mcp_server pytest -xvs tests/test_oauth.py
-```
-
-### Running OAuth PKCE Tests
-
-To run the OAuth PKCE-specific tests:
-
-```bash
-# Make sure the Docker containers are running
-docker-compose up -d
-
-# Run the OAuth PKCE tests using pytest
-docker-compose exec mcp_server pytest -xvs tests/test_oauth_pkce.py
-```
-
-### Running Django OAuth Client Tests
-
-To run the Django OAuth client tests:
-
-```bash
-# Make sure the Docker containers are running
-docker-compose up -d
-
-# Run the Django OAuth client tests
-docker-compose exec django_client python manage.py test memory_app.tests.test_oauth_integration
-```
-
-### Running Integration Tests
-
-We have implemented end-to-end integration tests that verify the complete OAuth flow between the MCP server and Django client:
+### Test Coverage
 
 1. **OAuth Flow Integration Test** (`test_oauth_flow`):
    - Tests the complete user journey from login to authorization
@@ -261,24 +272,48 @@ We have implemented end-to-end integration tests that verify the complete OAuth 
    - Verifies token refresh functionality between services
    - Validates session persistence
 
+#### Prerequisites for Integration Tests
+
+Before running the integration tests, ensure you have:
+
+1. Both services (MCP server and Django client) running via Docker Compose
+2. Required Python dependencies installed:
+   ```bash
+   pip install pytest selenium requests
+   ```
+3. Chrome WebDriver installed on your system
+4. Created a test user in the Django client:
+   ```bash
+   docker exec picard_mcp-django_client python manage.py shell -c "from django.contrib.auth.models import User; User.objects.filter(username='integrationtestuser').exists() or User.objects.create_user(username='integrationtestuser', email='integration@example.com', password='integrationtestpassword')"
+   ```
+
+#### Running the Integration Tests
+
 To run the integration tests:
 
 ```bash
 # Make sure both services are running
 docker-compose up -d
 
-# Install required dependencies (if not already installed)
-pip install pytest selenium
-
 # Run the integration tests
 python -m pytest tests/test_oauth_integration.py -v
 ```
 
-Note: The integration tests require a Chrome WebDriver to be installed on your system.
+You can also run the integration tests directly with Python, which provides more options:
+
+```bash
+# Run just the integration tests
+python tests/test_oauth_integration.py
+
+# Run all tests (MCP server, Django client, and integration tests)
+python tests/test_oauth_integration.py --all
+```
 
 ### Running All Tests
 
-To run all tests (both MCP server and Django client), you can run these commands in sequence:
+To run all tests (MCP server, Django client, and integration tests), you can either run them in sequence or use our all-in-one command:
+
+#### Running Tests in Sequence
 
 ```bash
 # Make sure the Docker containers are running
@@ -291,11 +326,23 @@ docker-compose exec mcp_server pytest -xvs
 docker exec picard_mcp-django_client python manage.py collectstatic --noinput
 docker exec picard_mcp-django_client python manage.py test
 
-# Run integration tests (requires additional dependencies)
+# Run integration tests
 python -m pytest tests/test_oauth_integration.py -v
 ```
 
-This allows you to see the results of each test suite separately and take action accordingly.
+#### Running All Tests with One Command
+
+We've added a convenience method to run all tests with a single command:
+
+```bash
+# Make sure the Docker containers are running
+docker-compose up -d
+
+# Run all tests (MCP server, Django client, and integration tests)
+python tests/test_oauth_integration.py --all
+```
+
+This will run all test suites in sequence and provide a summary of the results.
 
 ## Test Coverage
 

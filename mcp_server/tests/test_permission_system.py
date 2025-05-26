@@ -96,24 +96,33 @@ def access_token_with_multiple_scopes(db, test_user, oauth_client):
 def test_access_with_correct_scope(access_token_with_read_scope):
     """Test accessing an endpoint with the correct scope."""
     # Use the test override header to bypass scope check
-    response = client.get(
-        "/api/memories/",
+    response = client.post(
+        "/api/tools/",
         headers={
             "Authorization": f"Bearer {access_token_with_read_scope}",
             "X-Test-Override-Scopes": "true"
+        },
+        json={
+            "tool": "retrieve_memories",
+            "data": {}
         }
     )
     assert response.status_code == 200
-    assert "memories" in response.json()
+    assert "data" in response.json()
+    assert "memories" in response.json()["data"]
 
 def test_access_denied_with_wrong_scope(access_token_with_write_scope):
     """Test accessing an endpoint with the wrong scope."""
     # Don't use the test override header to test scope validation
-    response = client.get(
-        "/api/memories/",
+    response = client.post(
+        "/api/tools/",
         headers={
             "Authorization": f"Bearer {access_token_with_write_scope}"
             # No X-Test-Override-Scopes header
+        },
+        json={
+            "tool": "retrieve_memories",
+            "data": {}
         }
     )
     assert response.status_code == 403
@@ -122,31 +131,47 @@ def test_access_denied_with_wrong_scope(access_token_with_write_scope):
 def test_access_with_multiple_scopes(access_token_with_multiple_scopes):
     """Test accessing endpoints with a token that has multiple scopes."""
     # Use the test override header to bypass scope check
-    # Test accessing the memories endpoint (requires memories:read)
-    response = client.get(
-        "/api/memories/",
+    # Test retrieving memories (requires memories:read)
+    response = client.post(
+        "/api/tools/",
         headers={
             "Authorization": f"Bearer {access_token_with_multiple_scopes}",
             "X-Test-Override-Scopes": "true"
+        },
+        json={
+            "tool": "retrieve_memories",
+            "data": {}
         }
     )
     assert response.status_code == 200
     
     # Test creating a memory (requires memories:write)
     response = client.post(
-        "/api/memories/",
-        json={"memory_content": "Test memory"},
+        "/api/tools/",
         headers={
             "Authorization": f"Bearer {access_token_with_multiple_scopes}",
             "X-Test-Override-Scopes": "true"
+        },
+        json={
+            "tool": "submit_memory",
+            "data": {
+                "text": "Test memory",
+                "permission": "private"
+            }
         }
     )
-    assert response.status_code == 201
+    assert response.status_code == 200
 
 def test_access_without_token():
     """Test accessing a protected endpoint without a token."""
     # Make a request without an Authorization header
-    response = client.get("/api/memories/")
+    response = client.post(
+        "/api/tools/",
+        json={
+            "tool": "retrieve_memories",
+            "data": {}
+        }
+    )
     
     # Assert that we get a 401 Unauthorized response
     assert response.status_code == 401
@@ -156,11 +181,15 @@ def test_access_without_token():
 def test_token_revocation(db, access_token_with_read_scope):
     """Test revoking a token."""
     # First, verify the token works with test override
-    response = client.get(
-        "/api/memories/",
+    response = client.post(
+        "/api/tools/",
         headers={
             "Authorization": f"Bearer {access_token_with_read_scope}",
             "X-Test-Override-Scopes": "true"
+        },
+        json={
+            "tool": "retrieve_memories",
+            "data": {}
         }
     )
     assert response.status_code == 200
@@ -184,11 +213,15 @@ def test_token_revocation(db, access_token_with_read_scope):
     
     # Try to use the token with the test override - it should still work because we're bypassing validation
     # This is just to verify our test setup is working
-    response = client.get(
-        "/api/memories/",
+    response = client.post(
+        "/api/tools/",
         headers={
             "Authorization": f"Bearer {access_token_with_read_scope}",
             "X-Test-Override-Scopes": "true"
+        },
+        json={
+            "tool": "retrieve_memories",
+            "data": {}
         }
     )
     assert response.status_code == 200

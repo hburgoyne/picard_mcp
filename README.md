@@ -283,13 +283,13 @@ The core functionality of Picard MCP revolves around memory management with the 
   - Request: grant_type, code, redirect_uri, client_id, client_secret, code_verifier
   - Response: Access token, refresh token, expiration, and scope information
 
-### Memory Endpoints
+### MCP Tools API
 
-- **Get Memories**: `/api/tools` (tool: `get_memories`)
+- **Retrieve Memories**: `/api/tools` (tool: `retrieve_memories`)
   - Method: POST
   - Description: Retrieve memories with optional filtering
   - Authentication: Bearer token
-  - Request: Optional filter parameters (user_id, permission, expiration status)
+  - Request: Optional filter parameters in the data field
   - Response: List of memories accessible to the user
   - Example Request:
     ```json
@@ -306,8 +306,8 @@ The core functionality of Picard MCP revolves around memory management with the 
   - Method: POST
   - Description: Create a new memory
   - Authentication: Bearer token
-  - Request: Memory text, permission level, and expiration date (ISO 8601 format, e.g., "2025-12-31T23:59:59Z")
-  - Response: Created memory details including UUID identifier
+  - Request: Memory text, permission level, and optional expiration date in the data field
+  - Response: Created memory details with UUID identifier
   - Example Request:
     ```json
     {
@@ -319,24 +319,11 @@ The core functionality of Picard MCP revolves around memory management with the 
     }
     ```
 
-- **Retrieve Memories**: `/api/tools` (tool: `retrieve_memories`)
-  - Method: POST
-  - Description: Get all memories for the authenticated user
-  - Authentication: Bearer token
-  - Response: List of memory objects with UUID identifiers
-  - Example Request:
-    ```json
-    {
-      "tool": "retrieve_memories",
-      "data": {}
-    }
-    ```
-
 - **Update Memory**: `/api/tools` (tool: `update_memory`)
   - Method: POST
   - Description: Update an existing memory
   - Authentication: Bearer token
-  - Request: Memory ID, updated content, and optionally updated expiration date (ISO 8601 format)
+  - Request: Memory ID and updated content in the data field
   - Response: Updated memory details
   - Example Request:
     ```json
@@ -344,17 +331,16 @@ The core functionality of Picard MCP revolves around memory management with the 
       "tool": "update_memory",
       "data": {
         "memory_id": "550e8400-e29b-41d4-a716-446655440000",
-        "text": "Updated memory content",
-        "expiration_date": "2026-01-01T00:00:00Z"
+        "text": "Updated memory content"
       }
     }
     ```
 
 - **Modify Permissions**: `/api/tools` (tool: `modify_permissions`)
   - Method: POST
-  - Description: Update memory permission level
+  - Description: Update memory permissions
   - Authentication: Bearer token
-  - Request: Memory UUID and new permission level
+  - Request: Memory ID and new permission level in the data field
   - Response: Updated memory details
   - Example Request:
     ```json

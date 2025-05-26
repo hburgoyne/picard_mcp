@@ -14,10 +14,18 @@ from app.utils.oauth import create_access_token
 @pytest.fixture(scope="function")
 def test_user(db_session):
     """Create a test user for tools tests."""
+    # First check if the test user already exists
+    user = db_session.query(User).filter(User.username == "testuser").first()
+    if user:
+        return user
+        
+    # Create a test user with a fixed ID to match what auth.py will use
     user = User(
-        email="tools_test@example.com",
-        username="tools_test_user",
-        hashed_password="hashed_password"
+        id=uuid.UUID("00000000-0000-0000-0000-000000000001"),
+        email="test@example.com",
+        username="testuser",
+        hashed_password="hashed_password",
+        is_active=True
     )
     db_session.add(user)
     db_session.commit()
@@ -58,13 +66,22 @@ def test_client():
 @pytest.fixture(scope="function")
 def test_memory(db_session, test_user):
     """Create a test memory for the test user."""
+    # First ensure the user exists and is properly committed
+    db_session.refresh(test_user)
+    
+    # Check if a test memory already exists for this user
+    existing_memory = db_session.query(Memory).filter(Memory.user_id == test_user.id).first()
+    if existing_memory:
+        return existing_memory
+    
     memory = Memory(
         user_id=test_user.id,
-        text="Test memory content",
+        text="This is a test memory",
         permission="private"
     )
     db_session.add(memory)
     db_session.commit()
+    db_session.refresh(memory)  # Make sure we have the latest data
     return memory
 
 
@@ -82,7 +99,7 @@ def test_submit_memory(test_client, test_token, db_session, test_user):
     
     # Make the request
     response = test_client.post(
-        "/api/tools",
+        "/api/tools/",
         headers={"Authorization": f"Bearer {test_token}", "X-Test-Override-Scopes": "true"},
         json=memory_data
     )
@@ -119,7 +136,7 @@ def test_retrieve_memories(test_client, test_token, test_memory):
     
     # Make the request
     response = test_client.post(
-        "/api/tools",
+        "/api/tools/",
         headers={"Authorization": f"Bearer {test_token}", "X-Test-Override-Scopes": "true"},
         json=request_data
     )
@@ -138,7 +155,7 @@ def test_retrieve_memories(test_client, test_token, test_memory):
     assert "permission" in memory
     assert "created_at" in memory
     assert "updated_at" in memory
-    assert memory["text"] == "Test memory content"
+    assert memory["text"] == "This is a test memory"
     assert memory["permission"] == "private"
 
 
@@ -157,7 +174,7 @@ def test_update_memory(test_client, test_token, test_memory, db_session):
     
     # Make the request
     response = test_client.post(
-        "/api/tools",
+        "/api/tools/",
         headers={"Authorization": f"Bearer {test_token}", "X-Test-Override-Scopes": "true"},
         json=memory_data
     )
@@ -193,7 +210,7 @@ def test_delete_memory(test_client, test_token, test_memory, db_session):
     
     # Make the request
     response = test_client.post(
-        "/api/tools",
+        "/api/tools/",
         headers={"Authorization": f"Bearer {test_token}", "X-Test-Override-Scopes": "true"},
         json=memory_data
     )
@@ -223,7 +240,7 @@ def test_modify_permissions(test_client, test_token, test_memory, db_session):
     
     # Make the request
     response = test_client.post(
-        "/api/tools",
+        "/api/tools/",
         headers={"Authorization": f"Bearer {test_token}", "X-Test-Override-Scopes": "true"},
         json=memory_data
     )
@@ -251,7 +268,7 @@ def test_unknown_tool(test_client, test_token):
     
     # Make the request
     response = test_client.post(
-        "/api/tools",
+        "/api/tools/",
         headers={"Authorization": f"Bearer {test_token}", "X-Test-Override-Scopes": "true"},
         json=request_data
     )

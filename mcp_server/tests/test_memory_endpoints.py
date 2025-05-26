@@ -59,6 +59,9 @@ def test_client():
 @pytest.fixture(scope="function")
 def test_memory(db_session, test_user):
     """Create a test memory for the test user."""
+    # First ensure the user exists and is properly committed
+    db_session.refresh(test_user)
+    
     memory = Memory(
         user_id=test_user.id,
         text="This is a test memory",
@@ -149,7 +152,7 @@ def test_create_memory(test_client, test_token, db_session, test_user):
     """Test creating a memory."""
     # Prepare the request data
     memory_data = {
-        "text": "New test memory",
+        "memory_content": "New test memory",
         "permission": "public",
         "expiration_date": (datetime.utcnow() + timedelta(days=1)).isoformat()
     }

@@ -113,7 +113,9 @@ LOGIN_REDIRECT_URL = '/dashboard/'
 LOGOUT_REDIRECT_URL = '/'
 
 # MCP Server settings
-MCP_SERVER_URL = os.getenv('MCP_SERVER_URL', 'http://localhost:8001')
+# Use mcp_server:8000 for internal Docker communication
+# For external access from a browser, use localhost:8001
+MCP_SERVER_URL = os.getenv('MCP_SERVER_URL', 'http://mcp_server:8000')
 MCP_SERVER_INTERNAL_URL = os.getenv('MCP_SERVER_INTERNAL_URL', 'http://mcp_server:8000')
 
 # OAuth settings

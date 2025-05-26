@@ -70,10 +70,6 @@ async def verify_token_middleware(request: Request, call_next):
         request.state.scopes = []
         request.state.token = ""
         return await call_next(request)
-    elif test_header == "check-blacklist":
-        # Special test mode: validate the token and check the blacklist, but bypass scope checks
-        logger.info("Using check-blacklist mode for testing token revocation")
-        # Continue with token validation and blacklist check, but set scopes to bypass scope checks later
     
     token = auth_header.split(" ")[1]
     
@@ -103,12 +99,6 @@ async def verify_token_middleware(request: Request, call_next):
         # Add user_id and scopes to request state
         request.state.user_id = token_obj.user_id
         request.state.scopes = token_obj.scope.split()
-        
-        # If we're in check-blacklist mode, give full access for testing
-        if request.headers.get("X-Test-Override-Scopes") == "check-blacklist":
-            logger.info(f"Setting all scopes for check-blacklist mode")
-            request.state.scopes = ["memories:read", "memories:write", "profile:read", "profile:write"]
-            
         request.state.token = token
         
     except Exception as e:

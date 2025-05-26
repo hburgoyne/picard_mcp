@@ -93,10 +93,10 @@ This document outlines the step-by-step implementation plan for the Picard MCP p
 - [x] Set up basic error handling
 
 ### 3.6 Permission System
-- [ ] Implement scope-based permission system
-- [ ] Set up middleware for resource protection
-- [ ] Create role-based access controls
-- [ ] Implement token blacklisting for revocation
+- [ ] Implement scope-based permission system [deferred]
+- [x] Set up middleware for resource protection
+- [ ] Create role-based access controls [deferred]
+- [x] Implement token blacklisting for revocation
 
 ## Phase 4: Memory Management and Search
 

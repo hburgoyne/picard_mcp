@@ -58,6 +58,10 @@ def dashboard(request):
 @login_required
 def oauth_authorize(request):
     """Initiate OAuth 2.0 authorization flow with the MCP server."""
+    # First try the direct connection method (recommended)
+    return direct_connect(request)
+    
+    # The code below is kept for reference but is not used in the new flow
     # Generate state and code_verifier
     state = secrets.token_urlsafe(32)
     code_verifier = generate_code_verifier()
@@ -83,11 +87,38 @@ def oauth_authorize(request):
     return redirect(authorization_url)
 
 @login_required
+def direct_connect(request):
+    """Connect the user to the MCP server using the direct connection method."""
+    from memory_app.utils.mcp_client import connect_user_to_mcp_server
+    
+    try:
+        # Connect the user directly
+        oauth_token = connect_user_to_mcp_server(request.user)
+        
+        if oauth_token:
+            messages.success(request, 'Successfully connected to MCP server.')
+        else:
+            messages.error(request, 'Failed to connect to MCP server. Please try again later.')
+    except Exception as e:
+        logger.error(f"Error in direct_connect: {str(e)}")
+        messages.error(request, f'Error connecting to MCP server: {str(e)}')
+    
+    return redirect('dashboard')
+
+@login_required
 def oauth_callback(request):
     """Handle OAuth 2.0 callback from the MCP server."""
     # Get authorization code and state from query parameters
     code = request.GET.get('code')
     state = request.GET.get('state')
+    error = request.GET.get('error')
+    
+    # Handle login_required error from MCP server
+    if error == 'login_required':
+        logger.info("Received login_required error from MCP server")
+        # Handle MCP login here - for now, just inform the user
+        messages.warning(request, 'Authentication with the MCP server is required. You need to log in to the MCP server first.')
+        return redirect('dashboard')
     
     # Verify state
     if state != request.session.get('oauth_state'):

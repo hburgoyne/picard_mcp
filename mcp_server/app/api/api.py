@@ -2,7 +2,7 @@
 Main API router that includes all endpoint routers.
 """
 from fastapi import APIRouter
-from app.api.endpoints import health, oauth, admin, token_management, memories
+from app.api.endpoints import health, oauth, admin, token_management, memories, user_tokens
 
 # Create main API router
 api_router = APIRouter()
@@ -13,3 +13,4 @@ api_router.include_router(oauth.router, prefix="/oauth", tags=["OAuth"])
 api_router.include_router(admin.router, prefix="/admin", tags=["Admin"])
 api_router.include_router(token_management.router, prefix="/tokens", tags=["Token Management"])
 api_router.include_router(memories.router, prefix="/memories", tags=["Memories"])
+api_router.include_router(user_tokens.router, prefix="/user-tokens", tags=["User Tokens"])

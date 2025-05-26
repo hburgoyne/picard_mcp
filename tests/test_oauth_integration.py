@@ -135,63 +135,60 @@ def test_oauth_flow(browser):
     if not create_test_user(browser):
         pytest.skip("Could not create or log in as test user")
     
-    # Navigate to the OAuth authorize endpoint
+    # Navigate to the OAuth authorize endpoint (which now uses direct connect)
     print(f"Navigating to OAuth authorize endpoint: {DJANGO_URL}/oauth/authorize/")
     browser.get(f"{DJANGO_URL}/oauth/authorize/")
     print(f"Current URL after navigation: {browser.current_url}")
     
     try:
-        # We should be redirected to the MCP server's consent page
-        print(f"Waiting for redirect to MCP consent page...")
+        # With direct connect, we should be redirected back to the dashboard
+        print(f"Waiting for redirect to dashboard...")
         WebDriverWait(browser, 20).until(
-            EC.url_contains(f"{MCP_URL}/api/oauth/authorize")
+            EC.url_contains(f"{DJANGO_URL}/dashboard/")
         )
         print(f"Redirected to: {browser.current_url}")
         
-        # Verify we're on the consent page
-        print("Checking consent page content...")
+        # Check for success message
+        print("Checking for success message...")
         page_source = browser.page_source
-        if "Authorization Request" in page_source:
-            print("Found 'Authorization Request' on page")
+        
+        # Look for either the success message or the "Connected" indicator
+        success_message_present = "Successfully connected to MCP server" in page_source
+        connected_indicator = "Connected to MCP" in page_source or "Connection Status: Connected" in page_source
+        
+        if success_message_present:
+            print("Found success message on page")
+        elif connected_indicator:
+            print("Found connected indicator on page")
         else:
-            print("WARNING: 'Authorization Request' not found on page")
+            print("WARNING: Neither success message nor connected indicator found on page")
             print(f"Page source excerpt: {page_source[:500]}...")
-        assert "Authorization Request" in page_source
         
-        # Check for scopes - with our new permission system, we need to be more flexible
-        # as the exact scopes shown might depend on what's allowed for the client
-        scopes_found = False
-        for scope in ["memories:read", "memories:write", "profile:read"]:
-            if scope in page_source:
-                print(f"Found scope '{scope}' on consent page")
-                scopes_found = True
-        assert scopes_found, "No valid scopes found on consent page"
+        # Assert that either the success message or connected indicator is present
+        assert success_message_present or connected_indicator, "No indication of successful connection found"
         
-        # Accept the authorization request
-        print("Clicking the authorize button...")
-        browser.find_element(By.NAME, "decision").click()
-        print(f"After clicking authorize, URL: {browser.current_url}")
+        # Verify the authorization was successful by checking the dashboard
+        print("Checking dashboard after connection...")
         
-        # We should be redirected back to the Django client
-        print("Waiting for redirect back to Django dashboard...")
-        WebDriverWait(browser, 20).until(
-            EC.url_contains(f"{DJANGO_URL}/dashboard")
-        )
-        print(f"Redirected to: {browser.current_url}")
+        # Check if we can see the memory creation button or other elements indicating we're connected
+        memory_creation_available = "Create Memory" in page_source
         
-        # Verify the authorization was successful
-        print("Checking for dashboard access after OAuth flow...")
-        page_source = browser.page_source
+        if memory_creation_available:
+            print("Found 'Create Memory' option on dashboard - connection successful")
+        else:
+            print("WARNING: 'Create Memory' option not found on dashboard")
+            print(f"Page source excerpt: {page_source[:500]}...")
         
-        # Check if we're on the dashboard page
-        assert "Dashboard" in browser.title or "Dashboard" in page_source
+        # Assert that we have access to memory creation features
+        assert memory_creation_available, "No memory creation options found after connection"
         
-        # Check if we can see the memory creation button, which indicates we're logged in
-        assert "Create Memory" in page_source
-        # Since we're on the dashboard and can see the Create Memory button,
-        # we know the OAuth flow worked correctly
-        print("OAuth flow completed successfully - user is on dashboard with access to create memories")
-        print("OAuth flow test completed successfully")
+        print("Direct connect OAuth flow test completed successfully")
+    
+    except Exception as e:
+        print(f"Error during OAuth flow test: {str(e)}")
+        print(f"Current URL: {browser.current_url}")
+        print(f"Page source: {browser.page_source[:500]}...")
+        raise
     except Exception as e:
         print(f"Error during OAuth flow test: {str(e)}")
         print(f"Current URL: {browser.current_url}")

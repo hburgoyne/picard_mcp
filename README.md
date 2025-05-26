@@ -55,9 +55,13 @@ The Picard MCP system follows a client-server architecture with the following co
    - Volume mounting for persistent data storage
    - Compatible with both local Docker deployment and Render cloud deployment
 
-### OAuth 2.0 Authentication Flow
+### Authentication Approaches
 
-The system implements OAuth 2.0 Authorization Code flow with PKCE (Proof Key for Code Exchange) for enhanced security, following RFC 6749 and RFC 7636 standards:
+The system offers two main authentication approaches:
+
+#### 1. Direct Connect with User Context Token Flow (Recommended)
+
+This simplified approach allows users to authenticate only once with the Django client, avoiding the need for separate MCP server authentication:
 
 1. **Client Registration**:
    - The Django client registers with the MCP server using the `/api/admin/clients/register` endpoint
@@ -65,40 +69,54 @@ The system implements OAuth 2.0 Authorization Code flow with PKCE (Proof Key for
    - The MCP server issues a UUID-based client ID and cryptographically secure client secret
    - Client credentials should be stored securely and never exposed in client-side code
 
-2. **Authorization Flow**:
+2. **User Authentication Flow**:
+   - User authenticates only with the Django client
+   - When the user initiates connection to the MCP server, the Django client makes a server-side request to the MCP's `/api/user-tokens/user-token` endpoint
+   - The request includes:
+     - Client credentials (client_id and client_secret)
+     - User information (username and email)
+     - Option to create user if not exists
+   - The MCP server verifies client credentials and either finds or creates a corresponding user
+   - MCP server issues access and refresh tokens for the user
+   - Django client securely stores these tokens and uses them for API requests
+
+3. **API Access**:
+   - Client includes the access token in the Authorization header (`Authorization: Bearer {token}`) for all API requests
+   - MCP server validates the token signature, expiration, and audience claims
+   - MCP server enforces scope-based permissions for each endpoint
+   - When the access token expires, client uses the refresh token to obtain a new one
+
+4. **Security Features**:
+   - Only confidential clients can use this method, providing server-to-server security
+   - Client credentials are verified for each token request
+   - Tokens are blacklisted after use to prevent replay attacks
+   - Refresh tokens use rotation: each use generates a new refresh token and invalidates the old one
+
+#### 2. Standard OAuth 2.0 Authorization Code Flow with PKCE (Legacy)
+
+The system also supports the standard OAuth 2.0 Authorization Code flow with PKCE for enhanced security, following RFC 6749 and RFC 7636 standards. This approach requires users to authenticate with both the client and the MCP server:
+
+1. **Authorization Flow**:
    - User initiates login through the Django client
    - Client generates a cryptographically secure random `state` parameter for CSRF protection
-   - Client generates a random PKCE `code_verifier` (min 43 characters) and derives `code_challenge` using SHA-256
+   - Client generates a random PKCE `code_verifier` and derives `code_challenge` using SHA-256
    - Client redirects to MCP server's `/authorize` endpoint with:
      - `response_type=code`
      - `client_id` (UUID format)
-     - `redirect_uri` (must exactly match one of the registered URIs)
+     - `redirect_uri`
      - `scope` (space-separated list, e.g., `memories:read memories:write`)
-     - `state` (for CSRF protection and session binding)
+     - `state` (for CSRF protection)
      - PKCE parameters (`code_challenge` and `code_challenge_method=S256`)
    - MCP server authenticates the user (if not already authenticated)
    - MCP server validates all parameters and redirects back to the client with a short-lived authorization code
 
-3. **Token Exchange**:
+2. **Token Exchange**:
    - Client verifies the returned `state` parameter matches the one sent in the authorization request
    - Client exchanges the authorization code for access and refresh tokens via `/token` endpoint
-   - Request includes:
-     - `grant_type=authorization_code`
-     - `code` (the authorization code received)
-     - `redirect_uri` (must match the one used in authorization request)
-     - `client_id` (UUID format)
-     - `client_secret` (for confidential clients)
-     - `code_verifier` (the original PKCE verifier that corresponds to the challenge)
-   - MCP server validates all parameters, verifies the code hasn't been used before, and confirms the code_verifier
    - MCP server issues a JWT access token, refresh token, expiration time, and granted scopes
-   - Client stores tokens securely (server-side for web applications) and never exposes them to the frontend
 
-4. **API Access**:
-   - Client includes the access token in the Authorization header (`Authorization: Bearer {token}`) for all API requests
-   - MCP server validates the token signature, expiration, and audience claims
-   - MCP server enforces scope-based permissions for each endpoint
-   - When the access token expires, client uses the refresh token to obtain a new one via the `/token` endpoint with `grant_type=refresh_token`
-   - If refresh token is expired or invalid, client must restart the authorization flow
+3. **API Access**:
+   - Same as in the Direct Connect approach
 
 ### Database Models
 
@@ -239,7 +257,7 @@ The core functionality of Picard MCP revolves around memory management with the 
   - Parameters: query (string), limit (integer)
   - Returns: List of relevant memories
 
-- **Query User Tool**: Queries a user's persona based on memories
+- **Query User**: Queries a user's persona based on memories
   - Parameters: user_id (UUID), query (string)
   - Returns: Response based on user's memories
 

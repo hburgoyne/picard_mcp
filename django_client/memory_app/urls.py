@@ -6,6 +6,7 @@ urlpatterns = [
     path('oauth/authorize/', views.oauth_authorize, name='oauth_authorize'),
     path('oauth/callback/', views.oauth_callback, name='oauth_callback'),
     path('oauth/refresh/', views.refresh_token, name='refresh_token'),
+    path('oauth/direct-connect/', views.direct_connect, name='direct_connect'),
     path('memories/create/', views.create_memory, name='create_memory'),
     path('memories/edit/<uuid:memory_id>/', views.edit_memory, name='edit_memory'),
     path('memories/delete/<uuid:memory_id>/', views.delete_memory, name='delete_memory'),

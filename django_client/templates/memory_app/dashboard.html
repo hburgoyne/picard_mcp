@@ -47,7 +47,6 @@
                 <h3>Your Memories</h3>
                 <div>
                     <a href="{% url 'create_memory' %}" class="btn btn-primary">Create Memory</a>
-                    <a href="{% url 'sync_memories' %}" class="btn btn-secondary">Sync Memories</a>
                 </div>
             </div>
             <div class="card-body">
@@ -55,13 +54,13 @@
                     <div class="row">
                         {% for memory in memories %}
                             <div class="col-md-6">
-                                <div class="card memory-card {% if memory.is_expired %}expired{% endif %} {{ memory.permission }}">
+                                <div class="card memory-card {% if memory.expiration_date and memory.expiration_date < now|date:'c' %}expired{% endif %} {{ memory.permission }}">
                                     <div class="card-header d-flex justify-content-between align-items-center">
                                         <span>
                                             <span class="badge {% if memory.permission == 'private' %}bg-danger{% else %}bg-success{% endif %}">
                                                 {{ memory.permission|title }}
                                             </span>
-                                            {% if memory.is_expired %}
+                                            {% if memory.expiration_date and memory.expiration_date < now|date:'c' %}
                                                 <span class="badge bg-warning">Expired</span>
                                             {% endif %}
                                         </span>

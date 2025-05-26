@@ -101,12 +101,12 @@ This document outlines the step-by-step implementation plan for the Picard MCP p
 ## Phase 4: Memory Management and Search
 
 ### 4.1 Memory Management API
-- [ ] Implement memory creation endpoint
-- [ ] Implement memory retrieval endpoints
-- [ ] Implement memory update endpoint
-- [ ] Implement memory deletion endpoint
+- [x] Implement memory creation endpoint
+- [x] Implement memory retrieval endpoints
+- [x] Implement memory update endpoint
+- [x] Implement memory deletion endpoint
 - [ ] Implement permission-based access control
-- [ ] Implement basic memory encryption at rest
+- [ ] Implement basic memory encryption at rest [deferred]
 
 ### 4.2 Vector Embedding and Search
 - [ ] Integrate OpenAI API for text embeddings using LangChain
@@ -125,8 +125,8 @@ This document outlines the step-by-step implementation plan for the Picard MCP p
 ## Phase 5: Django Client UI Implementation
 
 ### 5.1 Memory Management UI
-- [ ] Create simple memory creation form
-- [ ] Create basic memory listing page
+- [x] Create simple memory creation form
+- [x] Create basic memory listing page
 - [ ] Create simple memory editing form
 - [ ] Create memory deletion functionality
 - [ ] Implement basic permission toggle

@@ -20,7 +20,7 @@ from urllib.parse import urlencode
 # Set up logger
 logger = logging.getLogger(__name__)
 
-from .models import OAuthToken, Memory, UserProfile
+from .models import OAuthToken, UserProfile
 from .forms import MemoryForm, MemorySearchForm, UserQueryForm, UserRegistrationForm, UserProfileForm
 
 def generate_code_verifier():
@@ -41,17 +41,50 @@ def dashboard(request):
         oauth_token = OAuthToken.objects.get(user=request.user)
         connected = True
         token_expired = oauth_token.is_expired
+        
+        # If token is expired, redirect to refresh
+        if token_expired:
+            return redirect('refresh_token')
+            
+        # Get user's memories directly from MCP server
+        memories = []
+        try:
+            # Prepare request data
+            request_data = {
+                'tool': 'retrieve_memories',
+                'data': {}
+            }
+            
+            # Send request to MCP server
+            headers = {
+                'Authorization': f'Bearer {oauth_token.access_token}',
+                'Content-Type': 'application/json',
+            }
+            
+            response = requests.post(
+                f"{settings.MCP_SERVER_URL}/api/tools",
+                headers=headers,
+                json=request_data
+            )
+            response.raise_for_status()
+            result = response.json()
+            
+            # Get memories from response
+            memories = result['data']['memories']
+            
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Error fetching memories: {str(e)}")
+            messages.error(request, f'Error fetching memories: {str(e)}')
     except OAuthToken.DoesNotExist:
         connected = False
         token_expired = True
-    
-    # Get user's memories from local database
-    memories = Memory.objects.filter(user=request.user)
+        memories = []
     
     context = {
         'connected': connected,
         'token_expired': token_expired,
         'memories': memories,
+        'now': datetime.now().isoformat(),
     }
     return render(request, 'memory_app/dashboard.html', context)
 
@@ -230,7 +263,7 @@ def create_memory(request):
                     'tool': 'submit_memory',
                     'data': {
                         'text': form.cleaned_data['text'],
-                        'permission': form.cleaned_data['permission'],
+                        'permission': form.cleaned_data['permission']
                     }
                 }
                 
@@ -252,22 +285,12 @@ def create_memory(request):
                 response.raise_for_status()
                 result = response.json()
                 
-                # Create local copy of memory
-                memory = Memory.objects.create(
-                    id=uuid.UUID(result['data']['id']),
-                    user=request.user,
-                    text=form.cleaned_data['text'],
-                    permission=form.cleaned_data['permission'],
-                    expiration_date=form.cleaned_data['expiration_date'],
-                    created_at=timezone.now(),
-                    updated_at=timezone.now(),
-                )
-                
                 messages.success(request, 'Memory created successfully.')
                 return redirect('dashboard')
-            
+                
             except OAuthToken.DoesNotExist:
                 messages.error(request, 'Please connect to MCP server first.')
+                return redirect('oauth_authorize')
             except requests.exceptions.RequestException as e:
                 messages.error(request, f'Error creating memory: {str(e)}')
     else:
@@ -278,84 +301,102 @@ def create_memory(request):
 @login_required
 def edit_memory(request, memory_id):
     """Edit an existing memory in the MCP server."""
-    memory = get_object_or_404(Memory, id=memory_id, user=request.user)
-    
-    if request.method == 'POST':
-        form = MemoryForm(request.POST, instance=memory)
-        if form.is_valid():
-            try:
-                # Get OAuth token
-                oauth_token = OAuthToken.objects.get(user=request.user)
-                
-                # Check if token is expired and refresh if needed
-                if oauth_token.is_expired:
-                    return redirect('refresh_token')
-                
-                # Prepare memory data
-                memory_data = {
-                    'tool': 'update_memory',
-                    'data': {
-                        'memory_id': str(memory.id),
-                        'text': form.cleaned_data['text'],
-                    }
-                }
-                
-                # Add expiration date if provided
-                if form.cleaned_data['expiration_date']:
-                    memory_data['data']['expiration_date'] = form.cleaned_data['expiration_date'].isoformat()
-                
-                # Send request to MCP server
-                headers = {
-                    'Authorization': f'Bearer {oauth_token.access_token}',
-                    'Content-Type': 'application/json',
-                }
-                
-                response = requests.post(
-                    f"{settings.MCP_SERVER_URL}/api/tools",
-                    headers=headers,
-                    json=memory_data
-                )
-                response.raise_for_status()
-                
-                # Update permission if changed
-                if form.cleaned_data['permission'] != memory.permission:
-                    permission_data = {
-                        'tool': 'modify_permissions',
+    try:
+        # Get OAuth token
+        oauth_token = OAuthToken.objects.get(user=request.user)
+        
+        # Check if token is expired and refresh if needed
+        if oauth_token.is_expired:
+            return redirect('refresh_token')
+        
+        # First, get the memory from the MCP server
+        headers = {
+            'Authorization': f'Bearer {oauth_token.access_token}',
+            'Content-Type': 'application/json',
+        }
+        
+        # Fetch the memory to edit
+        memory_data = {
+            'tool': 'retrieve_memories',
+            'data': {}
+        }
+        
+        response = requests.post(
+            f"{settings.MCP_SERVER_URL}/api/tools",
+            headers=headers,
+            json=memory_data
+        )
+        response.raise_for_status()
+        result = response.json()
+        
+        # Find the memory with the matching ID
+        memory = None
+        for mem in result['data']['memories']:
+            if mem['id'] == str(memory_id):
+                memory = mem
+                break
+        
+        if not memory:
+            messages.error(request, 'Memory not found.')
+            return redirect('dashboard')
+        
+        # Convert the expiration date string to a datetime object if it exists
+        initial_data = {
+            'text': memory['text'],
+            'permission': memory['permission'],
+        }
+        
+        if 'expiration_date' in memory and memory['expiration_date']:
+            initial_data['expiration_date'] = datetime.fromisoformat(memory['expiration_date'])
+        
+        if request.method == 'POST':
+            form = MemoryForm(request.POST)
+            if form.is_valid():
+                try:
+                    # Prepare memory data for update
+                    update_data = {
+                        'tool': 'update_memory',
                         'data': {
-                            'memory_id': str(memory.id),
-                            'permission': form.cleaned_data['permission'],
+                            'memory_id': str(memory_id),
+                            'text': form.cleaned_data['text'],
+                            'permission': form.cleaned_data['permission']
                         }
                     }
                     
+                    # Add expiration date if provided
+                    if form.cleaned_data['expiration_date']:
+                        update_data['data']['expiration_date'] = form.cleaned_data['expiration_date'].isoformat()
+                    else:
+                        update_data['data']['expiration_date'] = None
+                    
+                    # Send request to MCP server
                     response = requests.post(
                         f"{settings.MCP_SERVER_URL}/api/tools",
                         headers=headers,
-                        json=permission_data
+                        json=update_data
                     )
                     response.raise_for_status()
+                    
+                    messages.success(request, 'Memory updated successfully.')
+                    return redirect('dashboard')
+                    
+                except requests.exceptions.RequestException as e:
+                    messages.error(request, f'Error updating memory: {str(e)}')
+        else:
+            form = MemoryForm(initial=initial_data)
+        
+        return render(request, 'memory_app/edit_memory.html', {'form': form, 'memory': memory})
                 
-                # Update local copy of memory
-                form.save()
-                memory.updated_at = timezone.now()
-                memory.save()
-                
-                messages.success(request, 'Memory updated successfully.')
-                return redirect('dashboard')
-            
-            except OAuthToken.DoesNotExist:
-                messages.error(request, 'Please connect to MCP server first.')
-            except requests.exceptions.RequestException as e:
-                messages.error(request, f'Error updating memory: {str(e)}')
-    else:
-        form = MemoryForm(instance=memory)
-    
-    return render(request, 'memory_app/edit_memory.html', {'form': form, 'memory': memory})
+    except OAuthToken.DoesNotExist:
+        messages.error(request, 'Please connect to MCP server first.')
+        return redirect('oauth_authorize')
+    except requests.exceptions.RequestException as e:
+        messages.error(request, f'Error retrieving memory: {str(e)}')
+        return redirect('dashboard')
 
 @login_required
 def delete_memory(request, memory_id):
     """Delete a memory from the MCP server."""
-    memory = get_object_or_404(Memory, id=memory_id, user=request.user)
-    
     if request.method == 'POST':
         try:
             # Get OAuth token
@@ -369,7 +410,7 @@ def delete_memory(request, memory_id):
             memory_data = {
                 'tool': 'delete_memory',
                 'data': {
-                    'memory_id': str(memory.id),
+                    'memory_id': str(memory_id),
                 }
             }
             
@@ -386,11 +427,8 @@ def delete_memory(request, memory_id):
             )
             response.raise_for_status()
             
-            # Delete local copy of memory
-            memory.delete()
-            
             messages.success(request, 'Memory deleted successfully.')
-        
+            
         except OAuthToken.DoesNotExist:
             messages.error(request, 'Please connect to MCP server first.')
         except requests.exceptions.RequestException as e:
@@ -510,67 +548,7 @@ def query_user(request):
     
     return render(request, 'memory_app/query_user.html', {'form': form})
 
-@login_required
-def sync_memories(request):
-    """Sync memories from the MCP server to the local database."""
-    try:
-        # Get OAuth token
-        oauth_token = OAuthToken.objects.get(user=request.user)
-        
-        # Check if token is expired and refresh if needed
-        if oauth_token.is_expired:
-            return redirect('refresh_token')
-        
-        # Prepare request data
-        request_data = {
-            'tool': 'retrieve_memories',
-            'data': {}
-        }
-        
-        # Send request to MCP server
-        headers = {
-            'Authorization': f'Bearer {oauth_token.access_token}',
-            'Content-Type': 'application/json',
-        }
-        
-        response = requests.post(
-            f"{settings.MCP_SERVER_URL}/api/tools",
-            headers=headers,
-            json=request_data
-        )
-        response.raise_for_status()
-        result = response.json()
-        
-        # Process memories
-        remote_memories = result['data']['memories']
-        
-        # Clear existing memories
-        Memory.objects.filter(user=request.user).delete()
-        
-        # Create local copies of memories
-        for memory_data in remote_memories:
-            memory = Memory(
-                id=uuid.UUID(memory_data['id']),
-                user=request.user,
-                text=memory_data['text'],
-                permission=memory_data['permission'],
-                created_at=datetime.fromisoformat(memory_data['created_at']),
-                updated_at=datetime.fromisoformat(memory_data['updated_at']),
-            )
-            
-            if memory_data.get('expiration_date'):
-                memory.expiration_date = datetime.fromisoformat(memory_data['expiration_date'])
-            
-            memory.save()
-        
-        messages.success(request, f'Successfully synced {len(remote_memories)} memories.')
-    
-    except OAuthToken.DoesNotExist:
-        messages.error(request, 'Please connect to MCP server first.')
-    except requests.exceptions.RequestException as e:
-        messages.error(request, f'Error syncing memories: {str(e)}')
-    
-    return redirect('dashboard')
+# sync_memories function removed as it's no longer needed - memories are fetched directly from the MCP server
 
 def register(request):
     """Register a new user."""

@@ -26,13 +26,13 @@ def test_mcp_server_health():
     print("\n=== Testing MCP server health ===")
     try:
         # Check MCP server health endpoint
-        response = requests.get(f"{MCP_URL}/health")
+        response = requests.get(f"{MCP_URL}/api/health/")
         print(f"MCP server health response: {response.status_code}")
         print(f"Response body: {response.text}")
         
         assert response.status_code == 200, f"MCP server health check failed with status {response.status_code}"
         assert "status" in response.json(), "MCP server health response missing status field"
-        assert response.json()["status"] == "ok", f"MCP server health status is not ok: {response.json()}"
+        assert response.json()["status"] == "healthy", f"MCP server health status is not healthy: {response.json()}"
         
         print("MCP server health check passed")
     except requests.exceptions.RequestException as e:
@@ -127,7 +127,7 @@ def test_mcp_server_api_endpoints():
     
     try:
         # Check MCP server API docs
-        docs_response = requests.get(f"{MCP_URL}/docs")
+        docs_response = requests.get(f"{MCP_URL}/docs/")
         print(f"MCP server API docs response: {docs_response.status_code}")
         assert docs_response.status_code == 200, f"MCP server API docs check failed with status {docs_response.status_code}"
         

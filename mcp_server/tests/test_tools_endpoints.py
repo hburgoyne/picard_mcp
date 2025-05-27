@@ -85,7 +85,7 @@ def test_memory(db_session, test_user):
     return memory
 
 
-def test_submit_memory(test_client, test_token, db_session, test_user):
+def test_submit_memory(test_client, test_token, db_session, test_user, override_get_db):
     """Test submitting a memory using the tools endpoint."""
     # Prepare the request data
     memory_data = {
@@ -126,7 +126,7 @@ def test_submit_memory(test_client, test_token, db_session, test_user):
     assert memory.user_id == test_user.id
 
 
-def test_retrieve_memories(test_client, test_token, test_memory):
+def test_retrieve_memories(test_client, test_token, test_memory, override_get_db):
     """Test retrieving memories using the tools endpoint."""
     # Prepare the request data
     request_data = {
@@ -159,7 +159,7 @@ def test_retrieve_memories(test_client, test_token, test_memory):
     assert memory["permission"] == "private"
 
 
-def test_update_memory(test_client, test_token, test_memory, db_session):
+def test_update_memory(test_client, test_token, test_memory, db_session, override_get_db):
     """Test updating a memory using the tools endpoint."""
     # Prepare the request data
     memory_data = {
@@ -198,7 +198,7 @@ def test_update_memory(test_client, test_token, test_memory, db_session):
     assert test_memory.permission == "public"
 
 
-def test_delete_memory(test_client, test_token, test_memory, db_session):
+def test_delete_memory(test_client, test_token, test_memory, db_session, override_get_db):
     """Test deleting a memory using the tools endpoint."""
     # Prepare the request data
     memory_data = {
@@ -227,7 +227,7 @@ def test_delete_memory(test_client, test_token, test_memory, db_session):
     assert memory is None
 
 
-def test_modify_permissions(test_client, test_token, test_memory, db_session):
+def test_modify_permissions(test_client, test_token, test_memory, db_session, override_get_db):
     """Test modifying memory permissions using the tools endpoint."""
     # Prepare the request data
     memory_data = {

@@ -91,10 +91,6 @@ def dashboard(request):
 @login_required
 def oauth_authorize(request):
     """Initiate OAuth 2.0 authorization flow with the MCP server."""
-    # First try the direct connection method (recommended)
-    return direct_connect(request)
-    
-    # The code below is kept for reference but is not used in the new flow
     # Generate state and code_verifier
     state = secrets.token_urlsafe(32)
     code_verifier = generate_code_verifier()

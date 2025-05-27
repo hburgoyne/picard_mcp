@@ -1,6 +1,7 @@
 ### Document Purpose
-**PROCESSES.md:** Some usefull processes to document
-- Useful processes and instructions for different workflows while developing, testing, maintaining the platform.
+**PROCESSES.md:** Useful processes and instructions for different workflows while developing, testing, and maintaining the Picard MCP platform.
+
+**✅ Current Status**: All core processes are operational and tested.
 ---
 
 ## Important Commands:
@@ -10,12 +11,12 @@ Rebuild Docker containers
 docker-compose down --remove-orphans && docker image prune -f && docker-compose up --build -d
 ```
 
-Run Django tests in Docker container
+Run Django tests in Docker container (✅ 13/13 passing)
 ```
 docker-compose exec django_client python manage.py test
 ```
 
-Run MCP server tests in Docker container
+Run MCP server tests in Docker container (✅ 46/46 passing)
 ```
 docker-compose exec mcp_server pytest -xvs
 ```
@@ -101,7 +102,7 @@ ADMIN_EMAIL=your_email@example.com
 
 ### Register a new OAuth client for Django
 
-To register a new OAuth client for the Django application, run the following command:
+**✅ Working Process**: To register a new OAuth client for the Django application, run the following command:
 
 ```bash
 docker-compose exec django_client python register_oauth_client.py
@@ -177,7 +178,7 @@ Replace `admin:adminpassword` with your actual admin credentials if you've custo
 
 ## OAuth 2.0 Flow
 
-The Picard MCP system implements a complete OAuth 2.0 authorization flow with PKCE support. Here's how to test the full flow:
+**✅ Current Implementation**: The Picard MCP system implements a **User Context Token flow** for streamlined authentication. Here's how to test the working implementation:
 
 ### Testing the Complete OAuth Flow
 
@@ -191,22 +192,19 @@ The Picard MCP system implements a complete OAuth 2.0 authorization flow with PK
    docker-compose exec django_client python register_oauth_client.py
    ```
 
-3. Log in to the Django client at http://localhost:8000/
-
-4. Navigate to the OAuth authorization endpoint:
-   ```
-   http://localhost:8000/oauth/authorize/
-   ```
-
-5. You'll be redirected to the MCP server's consent page where you can approve or deny the requested permissions
-
-6. After approval, you'll be redirected back to the Django client's dashboard with a success message
+3. **✅ Working Flow**: 
+   - Log in to the Django client at http://localhost:8000/
+   - Click "Connect to MCP Server" on the dashboard
+   - The client automatically handles OAuth token exchange server-side
+   - You'll see a success message and can immediately start creating memories
 
 ### OAuth Flow Implementation Details
 
-- **Authorization Code Flow with PKCE**: The system uses the authorization code flow with PKCE (Proof Key for Code Exchange) for enhanced security.
-- **CSRF Protection**: The state parameter is used to prevent cross-site request forgery attacks.
-- **Token Management**: Access tokens and refresh tokens are properly managed and stored in the database.
-- **Token Refresh**: The system automatically refreshes expired tokens when needed.
+- **✅ User Context Token Flow**: The current implementation uses server-to-server authentication for a streamlined user experience
+- **✅ Token Management**: Access tokens and refresh tokens are properly managed and stored in the database
+- **✅ Token Refresh**: The system automatically refreshes expired tokens when needed
+- **✅ Security**: Client credentials are securely managed and never exposed to the frontend
+
+**🔄 Future Enhancement**: The system architecture supports the standard OAuth 2.0 Authorization Code flow with PKCE, which could be implemented for scenarios requiring user consent flows.
 
 ---

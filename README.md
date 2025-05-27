@@ -15,10 +15,11 @@ This implementation follows the Model Context Protocol standard, which allows LL
 ### Key Components
 
 1. **MCP Server**: A FastAPI-based implementation of the Model Context Protocol that provides:
-   - OAuth 2.0 authentication and authorization with PKCE support
-   - Memory storage with vector embeddings
-   - Permission-based memory access control
-   - LLM integration for memory-based queries
+   - ✅ OAuth 2.0 authentication and authorization with PKCE support
+   - ✅ Memory storage with PostgreSQL and pgvector extension
+   - ✅ Permission-based memory access control (private/public)
+   - ✅ Vector embeddings for semantic search using OpenAI's text-embedding-3-small model
+   - 🔄 LLM integration for memory-based queries (framework ready, advanced features planned)
 
 2. **Django Client**: A web application that demonstrates integration with the MCP server:
    - User registration and authentication
@@ -165,11 +166,11 @@ The core functionality of Picard MCP revolves around memory management with the 
    - Permissions can be modified by the memory owner at any time
 
 3. **Memory Retrieval**:
-   - Users can retrieve their own memories with filtering and sorting options
-   - Semantic search allows finding memories based on meaning, not just keywords
-   - Vector similarity (cosine) enables finding related memories across the database
-   - Top-N most similar memories are returned based on query relevance
-   - Permission checks ensure users only access authorized memories
+   - ✅ Users can retrieve their own memories with filtering and sorting options
+   - ✅ Semantic search for finding memories based on meaning using vector embeddings
+   - ✅ Vector similarity (cosine) for finding related memories using pgvector
+   - ✅ Top-N most similar memories based on query relevance with configurable similarity threshold
+   - ✅ Permission checks ensure users only access authorized memories
 
 4. **LLM Integration**:
    - Memories can be used as context for LLM queries
@@ -199,11 +200,13 @@ The core functionality of Picard MCP revolves around memory management with the 
   - Activity tracking and analytics
   - Admin controls for system management
 
-- **AI Integration**:
-  - OpenAI API integration for embeddings and LLM queries
-  - Persona creation based on user memories
-  - Context-aware query processing
-  - Customizable AI parameters and settings
+- **✅ AI Integration**:
+  - ✅ OpenAI API integration (v1.x) for embeddings using text-embedding-3-small model
+  - ✅ Automatic vector embedding generation for all memories (1536 dimensions)
+  - ✅ Semantic search using pgvector cosine similarity
+  - ✅ Asynchronous embedding generation with strict error handling
+  - 📋 Persona creation framework based on user memories (planned)
+  - 📋 Context-aware query processing architecture (planned)
 
 ### Django Client Features
 
@@ -254,8 +257,9 @@ The core functionality of Picard MCP revolves around memory management with the 
   - Returns: Success confirmation
 
 - **Query Memory Tool**: Performs semantic search on memories
-  - Parameters: query (string), limit (integer)
-  - Returns: List of relevant memories
+  - Parameters: query (string), limit (integer), similarity_threshold (float), permission_filter (string)
+  - Returns: List of relevant memories ordered by similarity score
+  - Uses: OpenAI embeddings and pgvector cosine similarity
 
 - **Query User**: Queries a user's persona based on memories
   - Parameters: user_id (UUID), query (string)
@@ -363,6 +367,42 @@ The core functionality of Picard MCP revolves around memory management with the 
       "data": {
         "memory_id": "550e8400-e29b-41d4-a716-446655440000",
         "permission": "public"
+      }
+    }
+    ```
+
+- **Query Memory**: `/api/tools` (tool: `query_memory`)
+  - Method: POST
+  - Description: Perform semantic search on user's memories using vector embeddings
+  - Authentication: Bearer token
+  - Request: Search query and optional parameters in the data field
+  - Response: List of memories ordered by similarity score
+  - Example Request:
+    ```json
+    {
+      "tool": "query_memory",
+      "data": {
+        "query": "artificial intelligence thoughts",
+        "limit": 10,
+        "similarity_threshold": 0.5,
+        "permission_filter": "private"
+      }
+    }
+    ```
+  - Example Response:
+    ```json
+    {
+      "data": {
+        "memories": [
+          {
+            "id": "550e8400-e29b-41d4-a716-446655440000",
+            "text": "I think AI will revolutionize how we work...",
+            "permission": "private",
+            "similarity": 0.85,
+            "created_at": "2024-01-15T10:30:00Z",
+            "updated_at": "2024-01-15T10:30:00Z"
+          }
+        ]
       }
     }
     ```

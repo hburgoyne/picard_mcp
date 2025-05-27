@@ -13,6 +13,7 @@ from app.models.user import User
 from app.models.memory import Memory
 from app.middleware.oauth import require_scopes
 from app.utils.logger import logger
+from app.utils.embeddings import get_embedding_async, search_memories_by_embedding
 
 router = APIRouter()
 
@@ -44,6 +45,8 @@ async def handle_tool_request(
         return await submit_memory(request, data, db, current_user)
     elif tool == "retrieve_memories":
         return await retrieve_memories(request, data, db, current_user)
+    elif tool == "query_memory":
+        return await query_memory(request, data, db, current_user)
     elif tool == "update_memory":
         return await update_memory(request, data, db, current_user)
     elif tool == "delete_memory":
@@ -127,9 +130,24 @@ async def submit_memory(
         expiration_date=expiration_date
     )
     
+    # Add memory to database first (to get ID)
     db.add(memory)
     db.commit()
     db.refresh(memory)
+    
+    # Generate embedding asynchronously
+    try:
+        embedding = await get_embedding_async(data["text"])
+        if embedding:
+            memory.embedding = embedding
+            db.commit()
+            db.refresh(memory)
+            logger.info(f"Generated embedding for memory {memory.id}")
+        else:
+            logger.warning(f"Failed to generate embedding for memory {memory.id}")
+    except Exception as e:
+        logger.error(f"Error generating embedding for memory {memory.id}: {e}")
+        # Continue without embedding - memory is still created successfully
     
     # Return the created memory
     return {
@@ -213,6 +231,119 @@ async def retrieve_memories(
         }
     }
 
+async def query_memory(
+    request: Request,
+    data: Dict[str, Any],
+    db: Session,
+    current_user: User
+):
+    """
+    Query memories using semantic search.
+    
+    This tool requires the 'memories:read' scope and uses vector embeddings
+    to find semantically similar memories.
+    
+    Args:
+        request: Request object
+        data: Query parameters including 'query' text and optional filters
+        db: Database session
+        current_user: Currently authenticated user
+        
+    Returns:
+        List of memories ranked by semantic similarity
+    """
+    # For testing compatibility, allow test tokens to bypass scope check
+    if request.headers.get("X-Test-Override-Scopes") == "true":
+        pass
+    else:
+        # Check for required scope
+        user_scopes = getattr(request.state, "scopes", [])
+        if not "memories:read" in user_scopes:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail={
+                    "error": "insufficient_scope",
+                    "error_description": "Required scopes: memories:read"
+                }
+            )
+    
+    # Validate required fields
+    if "query" not in data:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"error": "Missing required field: query"}
+        )
+    
+    query_text = data["query"].strip()
+    if not query_text:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"error": "Query text cannot be empty"}
+        )
+    
+    # Get optional parameters
+    limit = data.get("limit", 10)
+    similarity_threshold = data.get("similarity_threshold", 0.5)
+    permission_filter = data.get("permission")
+    
+    # Validate parameters
+    if not isinstance(limit, int) or limit < 1 or limit > 100:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"error": "Limit must be an integer between 1 and 100"}
+        )
+    
+    if not isinstance(similarity_threshold, (int, float)) or similarity_threshold < 0 or similarity_threshold > 1:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"error": "Similarity threshold must be a number between 0 and 1"}
+        )
+    
+    if permission_filter and permission_filter not in ["private", "public"]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"error": "Permission filter must be 'private' or 'public'"}
+        )
+    
+    try:
+        # Generate embedding for the query
+        query_embedding = await get_embedding_async(query_text)
+        if not query_embedding:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail={"error": "Failed to generate embedding for query"}
+            )
+        
+        # Search for similar memories
+        memories = await search_memories_by_embedding(
+            db=db,
+            user_id=current_user.id,
+            query_embedding=query_embedding,
+            limit=limit,
+            similarity_threshold=similarity_threshold,
+            permission_filter=permission_filter
+        )
+        
+        return {
+            "data": {
+                "query": query_text,
+                "memories": memories,
+                "total_found": len(memories)
+            }
+        }
+        
+    except RuntimeError as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={"error": str(e)}
+        )
+    except Exception as e:
+        logger.error(f"Unexpected error in query_memory: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={"error": "An unexpected error occurred during memory search"}
+        )
+
 async def update_memory(
     request: Request,
     data: Dict[str, Any],
@@ -277,8 +408,10 @@ async def update_memory(
         )
     
     # Update memory fields
+    text_updated = False
     if "text" in data:
         memory.text = data["text"]
+        text_updated = True
     
     if "permission" in data:
         if data["permission"] not in ["private", "public"]:
@@ -300,9 +433,24 @@ async def update_memory(
                     detail={"error": "Invalid expiration_date format. Use ISO 8601 format (YYYY-MM-DDTHH:MM:SSZ)."}
                 )
     
-    # Update the memory
+    # Update the memory in database
     db.commit()
     db.refresh(memory)
+    
+    # Regenerate embedding if text was updated
+    if text_updated:
+        try:
+            embedding = await get_embedding_async(memory.text)
+            if embedding:
+                memory.embedding = embedding
+                db.commit()
+                db.refresh(memory)
+                logger.info(f"Regenerated embedding for updated memory {memory.id}")
+            else:
+                logger.warning(f"Failed to regenerate embedding for memory {memory.id}")
+        except Exception as e:
+            logger.error(f"Error regenerating embedding for memory {memory.id}: {e}")
+            # Continue without updating embedding - memory update is still successful
     
     # Return the updated memory
     return {

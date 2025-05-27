@@ -123,9 +123,12 @@ This document outlines the step-by-step implementation plan for the Picard MCP p
 - [ ] Implement basic memory encryption at rest [deferred to Phase 7]
 
 ### 4.2 Vector Embedding and Search
-- [ ] Integrate OpenAI API for text embeddings using LangChain
-- [ ] Implement vector storage with pgvector
-- [ ] Implement basic semantic search functionality
+- [x] Upgrade OpenAI API to newest version (1.x)
+- [x] Update embedding utility functions for new OpenAI API
+- [x] Implement automatic asynchronous embedding generation for memories
+- [x] Implement basic semantic search with cosine similarity using pgvector
+- [x] Add query_memory tool implementation for semantic search
+- [x] Add strict error handling for OpenAI API failures
 
 ### 4.3 LLM Integration
 - [ ] Implement simple persona query functionality

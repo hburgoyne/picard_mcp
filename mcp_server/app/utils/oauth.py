@@ -230,11 +230,21 @@ def validate_access_token(db: Session, token: str) -> Optional[Token]:
     Returns:
         Token if valid, None otherwise
     """
+    logger.info(f"Validating access token: {token[:10]}...")
     token_obj = db.query(Token).filter(Token.access_token == token).first()
     
-    if not token_obj or token_obj.is_access_token_expired or token_obj.is_revoked:
+    if not token_obj:
+        logger.info(f"No token found in database for: {token[:10]}...")
+        return None
+    
+    logger.info(f"Found token in database. Expired: {token_obj.is_access_token_expired}, Revoked: {token_obj.is_revoked}")
+    logger.info(f"Token scope: '{token_obj.scope}'")
+    
+    if token_obj.is_access_token_expired or token_obj.is_revoked:
+        logger.info(f"Token is expired or revoked")
         return None
         
+    logger.info(f"Token validation successful!")
     return token_obj
 
 def refresh_access_token(

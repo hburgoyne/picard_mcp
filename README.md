@@ -59,7 +59,7 @@ The Picard MCP system follows a client-server architecture with the following co
 
 The system offers two main authentication approaches:
 
-#### 1. Direct Connect with User Context Token Flow (Recommended)
+#### 1. Direct Connect with User Context Token Flow (THIS IS WHAT WE'RE IMPLEMENTED)
 
 This simplified approach allows users to authenticate only once with the Django client, avoiding the need for separate MCP server authentication:
 
@@ -92,7 +92,7 @@ This simplified approach allows users to authenticate only once with the Django 
    - Tokens are blacklisted after use to prevent replay attacks
    - Refresh tokens use rotation: each use generates a new refresh token and invalidates the old one
 
-#### 2. Standard OAuth 2.0 Authorization Code Flow with PKCE (Legacy)
+#### 2. Standard OAuth 2.0 Authorization Code Flow with PKCE (EXAMPLE, NOT IMPLEMENTING NOW!)
 
 The system also supports the standard OAuth 2.0 Authorization Code flow with PKCE for enhanced security, following RFC 6749 and RFC 7636 standards. This approach requires users to authenticate with both the client and the MCP server:
 
@@ -220,7 +220,7 @@ The core functionality of Picard MCP revolves around memory management with the 
   - Error handling and recovery
 
 - **Memory Tools**:
-  - Memory creation with rich text support
+  - Memory creation forms with rich text support
   - Batch import and export
   - Permission management interface
   - Tagging and categorization

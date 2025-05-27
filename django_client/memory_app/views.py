@@ -62,7 +62,7 @@ def dashboard(request):
             }
             
             response = requests.post(
-                f"{settings.MCP_SERVER_URL}/api/tools",
+                f"{settings.MCP_SERVER_INTERNAL_URL}/api/tools/",
                 headers=headers,
                 json=request_data
             )
@@ -278,7 +278,7 @@ def create_memory(request):
                 }
                 
                 response = requests.post(
-                    f"{settings.MCP_SERVER_URL}/api/tools",
+                    f"{settings.MCP_SERVER_INTERNAL_URL}/api/tools/",
                     headers=headers,
                     json=memory_data
                 )
@@ -322,7 +322,7 @@ def edit_memory(request, memory_id):
         }
         
         response = requests.post(
-            f"{settings.MCP_SERVER_URL}/api/tools",
+            f"{settings.MCP_SERVER_INTERNAL_URL}/api/tools/",
             headers=headers,
             json=memory_data
         )
@@ -371,7 +371,7 @@ def edit_memory(request, memory_id):
                     
                     # Send request to MCP server
                     response = requests.post(
-                        f"{settings.MCP_SERVER_URL}/api/tools",
+                        f"{settings.MCP_SERVER_INTERNAL_URL}/api/tools/",
                         headers=headers,
                         json=update_data
                     )
@@ -421,7 +421,7 @@ def delete_memory(request, memory_id):
             }
             
             response = requests.post(
-                f"{settings.MCP_SERVER_URL}/api/tools",
+                f"{settings.MCP_SERVER_INTERNAL_URL}/api/tools/",
                 headers=headers,
                 json=memory_data
             )
@@ -466,7 +466,7 @@ def search_memories(request):
                 }
                 
                 response = requests.post(
-                    f"{settings.MCP_SERVER_URL}/api/tools",
+                    f"{settings.MCP_SERVER_INTERNAL_URL}/api/tools/",
                     headers=headers,
                     json=search_data
                 )
@@ -522,7 +522,7 @@ def query_user(request):
                 }
                 
                 response = requests.post(
-                    f"{settings.MCP_SERVER_URL}/api/tools",
+                    f"{settings.MCP_SERVER_INTERNAL_URL}/api/tools/",
                     headers=headers,
                     json=query_data
                 )

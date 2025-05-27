@@ -169,6 +169,9 @@ async def retrieve_memories(
     else:
         # Check for required scope
         user_scopes = getattr(request.state, "scopes", [])
+        logger.info(f"Checking scopes for retrieve_memories: user_scopes={user_scopes}")
+        logger.info(f"Looking for scope 'memories:read' in {user_scopes}")
+        logger.info(f"Scope check result: {'memories:read' in user_scopes}")
         if not "memories:read" in user_scopes:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,

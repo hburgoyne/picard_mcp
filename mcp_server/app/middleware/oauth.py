@@ -78,12 +78,17 @@ async def verify_token_middleware(request: Request, call_next):
     
     # Validate token
     try:
+        logger.info(f"Attempting to validate token: {token[:10]}...")
         token_obj = validate_access_token(db, token)
+        logger.info(f"Token validation result: {token_obj is not None}")
         if not token_obj:
+            logger.error(f"Token validation failed for token: {token[:10]}...")
             return JSONResponse(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 content={"error": "unauthorized", "error_description": "Token is invalid or expired"}
             )
+        
+        logger.info(f"About to check blacklist for token: {token[:10]}...")
         
         # Check if token is blacklisted
         token_jti = token  # In a real implementation, you'd extract a JTI from the token
@@ -100,6 +105,14 @@ async def verify_token_middleware(request: Request, call_next):
         request.state.user_id = token_obj.user_id
         request.state.scopes = token_obj.scope.split()
         request.state.token = token
+        
+        logger.info(f"MIDDLEWARE: Set request.state.scopes to: {request.state.scopes}")
+        
+        # Debug logging for scope validation
+        logger.info(f"Token validation successful. User ID: {token_obj.user_id}")
+        logger.info(f"Token scope string: '{token_obj.scope}'")
+        logger.info(f"Parsed scopes: {token_obj.scope.split()}")
+        logger.info(f"Request state scopes: {getattr(request.state, 'scopes', 'NONE')}")
         
     except Exception as e:
         logger.error(f"Error validating token: {str(e)}")

@@ -38,9 +38,28 @@ USER app
 # Expose port
 EXPOSE 8000
 
-# Command for different environments
-CMD if [ "$ENVIRONMENT" = "production" ]; then \
-        uvicorn app.asgi:app --host 0.0.0.0 --port 8000 --workers ${WORKERS:-4} --no-access-log; \
-    else \
-        uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload; \
-    fi
+# Create startup script
+COPY <<EOF /app/startup.sh
+#!/bin/bash
+set -e
+
+echo "Starting MCP Server startup tasks..."
+
+# Run startup tasks (database setup, migrations, admin user creation)
+python scripts/startup_tasks.py
+
+# Start the server
+if [ "\$ENVIRONMENT" = "production" ]; then
+    echo "Starting production server..."
+    exec uvicorn app.main:app --host 0.0.0.0 --port \${PORT:-8000} --workers \${WORKERS:-1}
+else
+    echo "Starting development server..."
+    exec uvicorn app.main:app --host 0.0.0.0 --port \${PORT:-8000} --reload
+fi
+EOF
+
+# Make startup script executable
+RUN chmod +x /app/startup.sh
+
+# Use startup script as the command
+CMD ["/app/startup.sh"]

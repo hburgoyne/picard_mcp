@@ -17,12 +17,15 @@ services:
   # MCP Server Service
   - type: web
     name: picard-mcp-server
-    runtime: python3
+    runtime: docker
     plan: free
-    buildCommand: cd mcp_server && pip install -r requirements.txt
-    preDeployCommand: cd mcp_server && python -c "exec(open('scripts/startup_tasks.py').read())"
-    startCommand: cd mcp_server && uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    dockerfilePath: ./mcp_server/Dockerfile
+    dockerContext: ./mcp_server
     envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: picard-mcp-db
+          property: connectionString
       - key: POSTGRES_HOST
         fromDatabase:
           name: picard-mcp-db
@@ -64,12 +67,15 @@ services:
   # Django Client Service  
   - type: web
     name: picard-django-client
-    runtime: python3
+    runtime: docker
     plan: free
-    buildCommand: cd django_client && pip install -r requirements.txt
-    preDeployCommand: cd django_client && python scripts/render_startup.py
-    startCommand: cd django_client && gunicorn django_client.wsgi:application --bind 0.0.0.0:$PORT
+    dockerfilePath: ./django_client/Dockerfile
+    dockerContext: ./django_client
     envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: django-client-db
+          property: connectionString
       - key: DB_HOST
         fromDatabase:
           name: django-client-db

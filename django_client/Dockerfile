@@ -21,5 +21,23 @@ COPY . .
 # Expose port
 EXPOSE 8000
 
-# Command to run the application
-CMD ["gunicorn", "django_client.wsgi:application", "--bind", "0.0.0.0:8000"]
+# Create startup script
+COPY <<EOF /app/startup.sh
+#!/bin/bash
+set -e
+
+echo "Starting Django Client startup tasks..."
+
+# Run startup tasks (migrations, static files, OAuth registration)
+python scripts/render_startup.py
+
+# Start the server
+echo "Starting Django server with Gunicorn..."
+exec gunicorn django_client.wsgi:application --bind 0.0.0.0:\${PORT:-8000} --workers \${WORKERS:-1}
+EOF
+
+# Make startup script executable
+RUN chmod +x /app/startup.sh
+
+# Use startup script as the command
+CMD ["/app/startup.sh"]

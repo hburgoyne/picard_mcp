@@ -103,6 +103,11 @@ def register_oauth_client():
     admin_password = os.getenv('ADMIN_PASSWORD')
     redirect_uri = os.getenv('OAUTH_REDIRECT_URI', 'https://picard-django-client.onrender.com/oauth/callback')
     
+    print(f"MCP Server URL: {mcp_server_url}")
+    print(f"Admin Username: {admin_username}")
+    print(f"Admin Password: {'SET' if admin_password else 'NOT SET'}")
+    print(f"Redirect URI: {redirect_uri}")
+    
     if not admin_password:
         print("ADMIN_PASSWORD not set, skipping OAuth client registration")
         return False
@@ -139,6 +144,7 @@ def register_oauth_client():
             
             print(f"OAuth client registered successfully")
             print(f"Client ID: {client_id}")
+            print(f"Client Secret: {client_secret[:8]}...")  # Show partial secret for debugging
             
             # Set environment variables for the running process
             os.environ['OAUTH_CLIENT_ID'] = client_id
@@ -149,9 +155,23 @@ def register_oauth_client():
                 f.write(f"OAUTH_CLIENT_ID={client_id}\n")
                 f.write(f"OAUTH_CLIENT_SECRET={client_secret}\n")
             
+            # IMPORTANT: For Render deployment, also set the environment variables
+            # in a way that they persist to the Django process
+            # Write to a Python file that can be imported
+            with open('/tmp/oauth_credentials.py', 'w') as f:
+                f.write(f"OAUTH_CLIENT_ID = '{client_id}'\n")
+                f.write(f"OAUTH_CLIENT_SECRET = '{client_secret}'\n")
+            
+            print("OAuth credentials saved to environment and /tmp/oauth_credentials.env")
             return True
         else:
             print(f"OAuth client registration failed: {response.status_code} - {response.text}")
+            # Try to parse the error response for more details
+            try:
+                error_details = response.json()
+                print(f"Error details: {error_details}")
+            except:
+                print("Could not parse error response as JSON")
             return False
             
     except requests.RequestException as e:

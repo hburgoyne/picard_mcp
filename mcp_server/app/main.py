@@ -94,8 +94,8 @@ async def root():
 # Health endpoint for Render health checks
 @app.get("/health", tags=["Health"])
 async def health():
-    """Simple health check endpoint for Render."""
-    return {"status": "healthy"}
+    """Simple health check endpoint for Render - optimized for frequent calls."""
+    return {"status": "healthy", "timestamp": time.time()}
 
 # Import and include the API router
 from app.api.api import api_router

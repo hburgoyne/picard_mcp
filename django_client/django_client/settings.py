@@ -6,6 +6,26 @@ import dj_database_url
 # Load environment variables
 load_dotenv()
 
+# Also try to load OAuth credentials from the startup script
+oauth_credentials_file = '/tmp/oauth_credentials.env'
+if os.path.exists(oauth_credentials_file):
+    load_dotenv(oauth_credentials_file)
+
+# Try to import OAuth credentials from Python file as fallback
+oauth_credentials_py = '/tmp/oauth_credentials.py'
+if os.path.exists(oauth_credentials_py):
+    try:
+        import sys
+        sys.path.insert(0, '/tmp')
+        try:
+            import oauth_credentials  # type: ignore
+            os.environ.setdefault('OAUTH_CLIENT_ID', oauth_credentials.OAUTH_CLIENT_ID)
+            os.environ.setdefault('OAUTH_CLIENT_SECRET', oauth_credentials.OAUTH_CLIENT_SECRET)
+        finally:
+            sys.path.remove('/tmp')
+    except (ImportError, AttributeError):
+        pass  # Fallback to environment variables
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -123,6 +143,20 @@ OAUTH_CLIENT_ID = os.getenv('OAUTH_CLIENT_ID', '550e8400-e29b-41d4-a716-44665544
 OAUTH_CLIENT_SECRET = os.getenv('OAUTH_CLIENT_SECRET', 'a_strong_random_secret_at_least_32_characters')
 OAUTH_REDIRECT_URI = os.getenv('OAUTH_REDIRECT_URI', 'http://localhost:8000/oauth/callback/')
 OAUTH_SCOPES = os.getenv('OAUTH_SCOPES', 'memories:read memories:write')
+
+# Check if we're using default/invalid OAuth credentials
+USING_DEFAULT_OAUTH_CREDENTIALS = (
+    OAUTH_CLIENT_ID == '550e8400-e29b-41d4-a716-446655440000' or 
+    OAUTH_CLIENT_SECRET == 'a_strong_random_secret_at_least_32_characters'
+)
+
+if USING_DEFAULT_OAUTH_CREDENTIALS:
+    import logging
+    logger = logging.getLogger(__name__)
+    logger.warning("Using default OAuth credentials - this may cause authentication issues with the MCP server")
+
+# Enable OAuth credential checking on Render or when explicitly requested
+ENSURE_OAUTH_CREDENTIALS = not DEBUG or os.getenv('ENSURE_OAUTH_CREDENTIALS', '').lower() in ('true', '1', 't')
 
 # Security settings for production
 if not DEBUG:

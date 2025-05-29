@@ -2,7 +2,6 @@ from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.templating import Jinja2Templates
-from fastapi.staticfiles import StaticFiles
 import os
 from pathlib import Path
 from dotenv import load_dotenv
@@ -37,8 +36,7 @@ templates = Jinja2Templates(directory="app/templates")
 from app.core.config import settings
 settings.TEMPLATES = templates
 
-# Mount static files
-app.mount("/static", StaticFiles(directory="app/static"), name="static")
+# Note: Static files not needed for API-only MCP server
 
 # Request ID middleware for tracing
 @app.middleware("http")

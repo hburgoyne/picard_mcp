@@ -18,26 +18,21 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy application code
 COPY . .
 
+# Create startup script
+RUN echo '#!/bin/bash\n\
+set -e\n\
+\n\
+echo "Starting Django Client startup tasks..."\n\
+\n\
+# Run startup tasks (migrations, static files, OAuth registration)\n\
+python scripts/render_startup.py\n\
+\n\
+# Start the server\n\
+echo "Starting Django server with Gunicorn..."\n\
+exec gunicorn django_client.wsgi:application --bind 0.0.0.0:${PORT:-8000} --workers ${WORKERS:-1}' > /app/startup.sh && chmod +x /app/startup.sh
+
 # Expose port
 EXPOSE 8000
-
-# Create startup script
-COPY <<EOF /app/startup.sh
-#!/bin/bash
-set -e
-
-echo "Starting Django Client startup tasks..."
-
-# Run startup tasks (migrations, static files, OAuth registration)
-python scripts/render_startup.py
-
-# Start the server
-echo "Starting Django server with Gunicorn..."
-exec gunicorn django_client.wsgi:application --bind 0.0.0.0:\${PORT:-8000} --workers \${WORKERS:-1}
-EOF
-
-# Make startup script executable
-RUN chmod +x /app/startup.sh
 
 # Use startup script as the command
 CMD ["/app/startup.sh"]

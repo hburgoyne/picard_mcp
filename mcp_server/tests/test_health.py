@@ -14,6 +14,13 @@ def test_health_check():
     assert "timestamp" in data
     assert "service" in data
     assert "database" in data
+
+def test_root_health_check():
+    """Test the root-level health check endpoint for Render."""
+    response = client.get("/health")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "healthy"
     
 def test_readiness_probe():
     """Test the Kubernetes readiness probe endpoint."""

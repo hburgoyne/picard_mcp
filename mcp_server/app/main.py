@@ -91,6 +91,12 @@ async def root():
         "version": "0.1.0"
     }
 
+# Health endpoint for Render health checks
+@app.get("/health", tags=["Health"])
+async def health():
+    """Simple health check endpoint for Render."""
+    return {"status": "healthy"}
+
 # Import and include the API router
 from app.api.api import api_router
 app.include_router(api_router, prefix=settings.API_V1_STR)

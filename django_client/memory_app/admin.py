@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 from django.contrib.auth.models import User
-from .models import OAuthToken, Memory, UserProfile
+from .models import OAuthToken, UserProfile
 
 # Inline admin class for UserProfile
 class UserProfileInline(admin.StackedInline):
@@ -38,9 +38,4 @@ class OAuthTokenAdmin(admin.ModelAdmin):
     search_fields = ('user__username', 'user__email')
     readonly_fields = ('created_at', 'updated_at')
 
-@admin.register(Memory)
-class MemoryAdmin(admin.ModelAdmin):
-    list_display = ('id', 'user', 'permission', 'expiration_date', 'is_expired', 'created_at', 'updated_at')
-    list_filter = ('permission', 'expiration_date')
-    search_fields = ('user__username', 'user__email', 'text')
-    readonly_fields = ('id', 'created_at', 'updated_at')
+# Memory model has been removed as memories are now only stored in the MCP server

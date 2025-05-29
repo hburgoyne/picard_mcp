@@ -14,7 +14,11 @@ SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'django-insecure-key-for-development
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv('DEBUG', 'True').lower() in ('true', '1', 't')
 
-ALLOWED_HOSTS = ['*']  # In production, replace with specific hosts
+ALLOWED_HOSTS = ['*'] if DEBUG else [
+    'picard-django-client.onrender.com',
+    'localhost',
+    '127.0.0.1',
+]
 
 # Application definition
 INSTALLED_APPS = [
@@ -113,7 +117,9 @@ LOGIN_REDIRECT_URL = '/dashboard/'
 LOGOUT_REDIRECT_URL = '/'
 
 # MCP Server settings
-MCP_SERVER_URL = os.getenv('MCP_SERVER_URL', 'http://localhost:8001')
+# Use mcp_server:8000 for internal Docker communication
+# For external access from a browser, use localhost:8001
+MCP_SERVER_URL = os.getenv('MCP_SERVER_URL', 'http://mcp_server:8000')
 MCP_SERVER_INTERNAL_URL = os.getenv('MCP_SERVER_INTERNAL_URL', 'http://mcp_server:8000')
 
 # OAuth settings
@@ -121,3 +127,14 @@ OAUTH_CLIENT_ID = os.getenv('OAUTH_CLIENT_ID', '550e8400-e29b-41d4-a716-44665544
 OAUTH_CLIENT_SECRET = os.getenv('OAUTH_CLIENT_SECRET', 'a_strong_random_secret_at_least_32_characters')
 OAUTH_REDIRECT_URI = os.getenv('OAUTH_REDIRECT_URI', 'http://localhost:8000/oauth/callback/')
 OAUTH_SCOPES = os.getenv('OAUTH_SCOPES', 'memories:read memories:write')
+
+# Security settings for production
+if not DEBUG:
+    SECURE_SSL_REDIRECT = True
+    SECURE_HSTS_SECONDS = 31536000  # 1 year
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+    SECURE_BROWSER_XSS_FILTER = True
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True

@@ -39,12 +39,26 @@ def get_current_user(
     Returns:
         User object if authenticated, None otherwise
     """
+    # Check if middleware already validated the token and set scopes
+    if hasattr(request.state, 'user_id') and hasattr(request.state, 'scopes'):
+        logger.info(f"AUTH: Using middleware-validated user_id: {request.state.user_id}")
+        logger.info(f"AUTH: Using middleware-validated scopes: {request.state.scopes}")
+        user = db.query(User).filter(User.id == request.state.user_id).first()
+        if user and user.is_active:
+            return user
+    
     # Check Authorization header first (via oauth2_scheme)
     if token:
         token_obj = validate_access_token(db, token)
         if token_obj:
             user = db.query(User).filter(User.id == token_obj.user_id).first()
             if user and user.is_active:
+                # Ensure scopes are set on request.state if not already set by middleware
+                if not hasattr(request.state, 'scopes'):
+                    request.state.scopes = token_obj.scope.split()
+                    request.state.user_id = token_obj.user_id
+                    request.state.token = token
+                    logger.info(f"AUTH: Set scopes from token validation: {request.state.scopes}")
                 return user
     
     # Check for session cookie

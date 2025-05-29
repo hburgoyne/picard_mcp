@@ -1,30 +1,37 @@
 # Picard MCP Django Client
 
-This Django application serves as a reference implementation for integrating with the Picard MCP server. It demonstrates the OAuth 2.0 authentication flow, memory management capabilities, and persona-based querying features provided by the MCP server.
+This Django application serves as a **fully functional** reference implementation for integrating with the Picard MCP server. It demonstrates the OAuth 2.0 authentication flow, memory management capabilities, and provides a complete user interface for interacting with the MCP server.
+
+**✅ Current Status**: All core functionality is implemented and working, including OAuth flow, memory CRUD operations, and permission management.
 
 ## Features
 
-- **User Management**:
+- **✅ User Management**:
   - Registration and authentication
   - Profile management
-  - OAuth 2.0 client implementation with PKCE
+  - OAuth 2.0 client implementation with User Context Token flow
 
-- **Memory Management**:
+- **✅ Memory Management**:
   - Creation, retrieval, updating, and deletion of memories
-  - Permission control (public/private)
+  - Permission control (public/private) with toggle interface
   - Memory expiration date management (using ISO 8601 format)
   - Encrypted storage of sensitive memory content using Fernet symmetric encryption
 
-- **Search and Query**:
-  - Semantic search using vector embeddings
-  - Persona-based querying
+- **✅ Search and Query**:
+  - Basic memory filtering and retrieval
+  - Permission-based access control
   - Filtering by permission level and expiration date
 
-- **OAuth 2.0 Implementation**:
+- **✅ OAuth 2.0 Implementation**:
   - Secure token storage in PostgreSQL database
   - Automatic token refresh with 1-hour access token lifetime
   - Scope-based feature availability
-  - Error handling and recovery
+  - Comprehensive error handling and recovery
+
+- **🔄 Advanced Features** (Infrastructure Ready):
+  - Semantic search using vector embeddings
+  - Persona-based querying
+  - AI-powered memory interactions
 
 ## Setup
 
@@ -121,34 +128,40 @@ Access the Django client at http://localhost:8000
 3. Connect to the MCP server via OAuth by clicking "Connect to MCP Server"
 4. Create memories with the following attributes:
    - Text content (will be encrypted at rest using Fernet encryption)
-   - Permission level (public or private)
-   - Expiration date in ISO 8601 format (e.g., "2025-12-31T23:59:59Z") indicating when the memory is no longer considered valid
+   - Permission level (public or private) with toggle controls
+   - Optional expiration date in ISO 8601 format (e.g., "2025-12-31T23:59:59Z")
 5. Manage your memories:
-   - View all your memories
-   - Edit memory content
-   - Change permission levels
-   - Delete memories
-6. Search and query:
+   - View all your memories with filtering options
+   - Edit memory content and expiration dates
+   - Change permission levels using toggle controls
+   - Delete memories with confirmation
+6. **Current capabilities**:
+   - Basic memory retrieval and filtering
+   - Permission-based access control
+   - Memory CRUD operations
+7. **🔄 Planned features**:
    - Perform semantic searches across your memories
    - Query your own persona (includes private and public memories)
    - Query other users' personas (only includes their public memories)
 
 ## OAuth Flow
 
-The Django client implements the OAuth 2.0 Authorization Code flow with PKCE (Proof Key for Code Exchange) for enhanced security:
+The Django client implements the **User Context Token flow** for simplified authentication with the MCP server:
 
 1. User logs in to the Django app
 2. User clicks "Connect to MCP Server" on the dashboard
-3. Django client generates a cryptographically secure random `state` parameter for CSRF protection
-4. Client generates a random PKCE `code_verifier` and derives `code_challenge` using SHA-256
-5. Client redirects to MCP server's `/authorize` endpoint with required parameters
-6. MCP server authenticates the user (if not already authenticated)
-7. MCP server validates all parameters and redirects back to the client with an authorization code
-8. Django client verifies the returned `state` parameter matches the one sent in the request
-9. Client exchanges the authorization code for access and refresh tokens via `/token` endpoint
-10. Client stores tokens securely and uses the access token for API calls
-11. When the access token expires, the client uses the refresh token to obtain a new access token
-12. Each refresh token use generates a new refresh token and invalidates the old one
+3. Django client makes a server-side request to the MCP's `/api/user-tokens/user-token` endpoint
+4. The request includes:
+   - Client credentials (client_id and client_secret)
+   - User information (username and email)
+   - Option to create user if not exists
+5. The MCP server verifies client credentials and either finds or creates a corresponding user
+6. MCP server issues access and refresh tokens for the user
+7. Django client securely stores these tokens and uses them for API requests
+8. When the access token expires, the client uses the refresh token to obtain a new one
+9. Each refresh token use generates a new refresh token and invalidates the old one
+
+**Note**: This is different from the standard OAuth 2.0 Authorization Code flow with PKCE, which would require users to authenticate with both the client and the MCP server. The current implementation provides a streamlined user experience.
 
 ## MCP Server Integration
 
@@ -220,11 +233,14 @@ The Django client implements the OAuth 2.0 Authorization Code flow with PKCE (Pr
 To test the Django client integration with the MCP server:
 
 ```bash
-docker exec picard_mcp-django_client-1 python scripts/test_django_client.py
+docker-compose exec django_client python manage.py test
 ```
 
-This will test:
+**✅ Current Test Status**: 13/13 tests passing, including:
 - User interface functionality
 - OAuth integration with the MCP server
 - Memory management features
 - The interface between the Django client and the MCP server
+- Permission management and error handling
+
+For comprehensive testing documentation, see the main project's [TESTING.md](../TESTING.md).

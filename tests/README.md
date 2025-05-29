@@ -59,6 +59,15 @@ The tests cover the following functionality:
 
 - **Authorization Flow**: Tests the complete OAuth 2.0 authorization flow with PKCE
 - **Token Exchange**: Tests exchanging authorization codes for access and refresh tokens
+
+### Memory Management Tests
+
+- **Memory Creation**: Tests creating new memories through the Django client interface
+- **Memory Retrieval**: Tests retrieving memories from the MCP server
+- **Memory Update**: Tests updating existing memories
+- **Memory Search**: Tests searching for memories using specific criteria
+- **Memory Deletion**: Tests deleting memories
+- **API Verification**: Tests direct API verification of memory operations
 - **Token Refresh**: Tests refreshing expired access tokens using refresh tokens
 - **Error Handling**: Tests error conditions like invalid state parameters or missing code verifiers
 

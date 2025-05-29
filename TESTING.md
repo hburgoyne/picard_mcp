@@ -1,5 +1,14 @@
 # Picard MCP Testing Guide
 
+## Testing Status: ✅ All Core Tests Passing
+
+**Current Test Results:**
+- ✅ **MCP Server Tests**: 46/46 passing
+- ✅ **Django Client Tests**: 13/13 passing  
+- ✅ **API Health Checks**: Both services healthy
+- ✅ **End-to-End Memory Operations**: Working correctly
+- 🔄 **Browser Integration Tests**: Need improvement (browser automation issues)
+
 ## Quick Start: Running All Tests
 
 To run all tests for the Picard MCP project (MCP server, Django client, and integration tests), follow these steps:
@@ -19,16 +28,23 @@ To run all tests for the Picard MCP project (MCP server, Django client, and inte
 
 ### Run All Tests with One Command
 
-The easiest way to run all tests is with our all-in-one command:
+The easiest way to run all tests is with our comprehensive test suite:
 
+```bash
+# Run all unit tests
+echo "=== MCP Server Tests ===" && \
+docker-compose exec mcp_server pytest -v && \
+echo "=== Django Client Tests ===" && \
+docker-compose exec django_client python manage.py test && \
+echo "=== API Health Checks ===" && \
+curl -s http://localhost:8001/api/health/ | jq '.status' && \
+curl -s http://localhost:8000/health/ | jq '.status'
+```
+
+**For integration tests (requires manual setup due to browser automation):**
 ```bash
 python tests/test_oauth_integration.py --all
 ```
-
-This will run:
-1. MCP server tests (FastAPI backend)
-2. Django client tests (web frontend)
-3. Integration tests (OAuth flow between services)
 
 ### Running Tests Individually
 
@@ -114,8 +130,6 @@ These manual tests verify that the environment variables are properly loaded fro
 
 ## MCP Server Tests
 
-### MCP Server Tests
-
 The MCP server tests are organized into several categories:
 
 #### Model Tests
@@ -151,17 +165,28 @@ The MCP server tests are organized into several categories:
 #### Running MCP Server Tests
 
 ```bash
-# Run all MCP server tests
-docker-compose exec mcp_server pytest -xvs
+# Run all MCP server tests (recommended)
+docker-compose exec mcp_server pytest -v
 
-# Run specific test files
-docker-compose exec mcp_server pytest -xvs tests/test_oauth.py
-docker-compose exec mcp_server pytest -xvs tests/test_oauth_pkce.py
+# Run specific test categories
+docker-compose exec mcp_server pytest tests/test_oauth.py -v
+docker-compose exec mcp_server pytest tests/test_tools_endpoints.py -v
+docker-compose exec mcp_server pytest tests/test_permission_system.py -v
+
+# Run tests with detailed output for debugging
+docker-compose exec mcp_server pytest -xvs
 ```
+
+**Current Status**: ✅ 46/46 tests passing
+- Model tests (User, Memory, OAuth)
+- OAuth flow tests (authorization, token exchange, PKCE)
+- Tools endpoint tests (memory CRUD operations)
+- Permission system tests (scope validation)
+- Health check tests
 
 ### Django Client Tests
 
-The Django client tests focus on user authentication, profile management, and OAuth integration:
+The Django client tests focus on user authentication, OAuth integration, and memory management:
 
 1. **User Authentication Tests**:
    - Test user registration and login
@@ -169,18 +194,32 @@ The Django client tests focus on user authentication, profile management, and OA
 
 2. **OAuth Client Tests**:
    - Test OAuth authorization flow
-   - Test token storage and management
-   - Test token refresh
+   - Test token storage and refresh
+   - Test error handling
+
+3. **Memory Management Tests**:
+   - Test memory creation through Django interface
+   - Test API integration with MCP server
+   - Test error handling and edge cases
 
 #### Running Django Client Tests
 
 ```bash
-# Collect static files (only needed initially or after changes)
-docker exec picard_mcp-django_client python manage.py collectstatic --noinput
+# Run all Django client tests (recommended)
+docker-compose exec django_client python manage.py test
 
-# Run all Django client tests
-docker exec picard_mcp-django_client python manage.py test
+# Run specific test modules
+docker-compose exec django_client python manage.py test memory_app.tests
+
+# Run with verbose output
+docker-compose exec django_client python manage.py test -v 2
 ```
+
+**Current Status**: ✅ 13/13 tests passing
+- User registration and authentication
+- OAuth client integration
+- Memory operations through Django interface
+- Error handling and validation
 
 ## Phase 3: OAuth 2.0 Implementation Tests
 

@@ -79,7 +79,10 @@ app.add_middleware(
 
 # Add OAuth token validation middleware
 from app.middleware.oauth import verify_token_middleware
-app.middleware("http")(verify_token_middleware)
+
+@app.middleware("http")
+async def oauth_middleware(request, call_next):
+    return await verify_token_middleware(request, call_next)
 
 # Root endpoint
 @app.get("/", tags=["Root"])

@@ -1,19 +1,29 @@
 from django import forms
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import User
-from .models import Memory, UserProfile
+from .models import UserProfile
 import uuid
 
-class MemoryForm(forms.ModelForm):
+class MemoryForm(forms.Form):
     """Form for creating and editing memories."""
-    class Meta:
-        model = Memory
-        fields = ['text', 'permission', 'expiration_date']
-        widgets = {
-            'text': forms.Textarea(attrs={'rows': 5, 'class': 'form-control'}),
-            'permission': forms.Select(attrs={'class': 'form-select'}),
-            'expiration_date': forms.DateTimeInput(attrs={'type': 'datetime-local', 'class': 'form-control'}),
-        }
+    PERMISSION_CHOICES = [
+        ('private', 'Private'),
+        ('public', 'Public'),
+    ]
+    
+    text = forms.CharField(
+        widget=forms.Textarea(attrs={'rows': 5, 'class': 'form-control'}),
+        required=True
+    )
+    permission = forms.ChoiceField(
+        choices=PERMISSION_CHOICES,
+        widget=forms.Select(attrs={'class': 'form-select'}),
+        initial='private'
+    )
+    expiration_date = forms.DateTimeField(
+        widget=forms.DateTimeInput(attrs={'type': 'datetime-local', 'class': 'form-control'}),
+        required=False
+    )
 
 class MemorySearchForm(forms.Form):
     """Form for searching memories."""

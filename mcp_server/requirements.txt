@@ -10,8 +10,9 @@ python-multipart==0.0.6
 bcrypt==4.0.1
 python-dotenv==1.0.0
 pgvector==0.2.1
-openai==0.28.0
+openai>=1.0.0
 langchain==0.0.267
+numpy>=1.24.0
 cryptography==41.0.3
 pydantic-settings==2.0.3
 psutil==5.9.5

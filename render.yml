@@ -1,0 +1,116 @@
+databases:
+  - name: picard-mcp-db
+    databaseName: picard_mcp
+    user: picard_mcp_user
+    plan: free
+    postgresMajorVersion: "16"
+    ipAllowList: []
+
+  - name: django-client-db
+    databaseName: django_client
+    user: django_client_user
+    plan: free
+    postgresMajorVersion: "16"
+    ipAllowList: []
+
+services:
+  # MCP Server Service
+  - type: web
+    name: picard-mcp-server
+    runtime: python3
+    plan: free
+    buildCommand: cd mcp_server && pip install -r requirements.txt
+    preDeployCommand: cd mcp_server && python -c "exec(open('scripts/startup_tasks.py').read())"
+    startCommand: cd mcp_server && uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: POSTGRES_HOST
+        fromDatabase:
+          name: picard-mcp-db
+          property: host
+      - key: POSTGRES_PORT
+        fromDatabase:
+          name: picard-mcp-db
+          property: port
+      - key: POSTGRES_USER
+        fromDatabase:
+          name: picard-mcp-db
+          property: user
+      - key: POSTGRES_PASSWORD
+        fromDatabase:
+          name: picard-mcp-db
+          property: password
+      - key: POSTGRES_DB
+        fromDatabase:
+          name: picard-mcp-db
+          property: database
+      - key: ENVIRONMENT
+        value: production
+      - key: LOG_LEVEL
+        value: INFO
+      - key: SECRET_KEY
+        generateValue: true
+      - key: ADMIN_USERNAME
+        value: admin
+      - key: ADMIN_PASSWORD
+        generateValue: true
+      - key: ADMIN_EMAIL
+        value: admin@render.picard-mcp.com
+      - key: OPENAI_API_KEY
+        sync: false  # Set this manually in Render dashboard
+      - key: MCP_ISSUER_URL
+        value: https://picard-mcp-server.onrender.com
+    healthCheckPath: /health
+
+  # Django Client Service  
+  - type: web
+    name: picard-django-client
+    runtime: python3
+    plan: free
+    buildCommand: cd django_client && pip install -r requirements.txt
+    preDeployCommand: cd django_client && python scripts/render_startup.py
+    startCommand: cd django_client && gunicorn django_client.wsgi:application --bind 0.0.0.0:$PORT
+    envVars:
+      - key: DB_HOST
+        fromDatabase:
+          name: django-client-db
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: django-client-db
+          property: port
+      - key: DB_USER
+        fromDatabase:
+          name: django-client-db
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: django-client-db
+          property: password
+      - key: DB_NAME
+        fromDatabase:
+          name: django-client-db
+          property: database
+      - key: DEBUG
+        value: false
+      - key: DJANGO_SECRET_KEY
+        generateValue: true
+      - key: MCP_SERVER_URL
+        value: https://picard-mcp-server.onrender.com
+      - key: MCP_SERVER_INTERNAL_URL
+        value: https://picard-mcp-server.onrender.com
+      - key: OAUTH_REDIRECT_URI
+        value: https://picard-django-client.onrender.com/oauth/callback
+      - key: OAUTH_SCOPES
+        value: memories:read memories:write
+      - key: OAUTH_CLIENT_ID
+        sync: false  # Will be set by startup script
+      - key: OAUTH_CLIENT_SECRET
+        sync: false  # Will be set by startup script
+      - key: ADMIN_USERNAME
+        value: admin
+      - key: ADMIN_PASSWORD
+        fromService:
+          type: web
+          name: picard-mcp-server
+          envVarKey: ADMIN_PASSWORD
+    healthCheckPath: /health/

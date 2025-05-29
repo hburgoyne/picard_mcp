@@ -1,0 +1,95 @@
+# Production-like docker-compose for testing Render configuration locally
+services:
+  # PostgreSQL database for MCP server with pgvector extension
+  db-mcp:
+    image: ankane/pgvector:latest
+    container_name: picard_mcp-db-mcp-prod
+    volumes:
+      - postgres_data_mcp_prod:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_USER=picard_mcp_user
+      - POSTGRES_PASSWORD=render_test_password
+      - POSTGRES_DB=picard_mcp
+    ports:
+      - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U picard_mcp_user -d picard_mcp"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # PostgreSQL database for Django client
+  db-django:
+    image: postgres:16
+    container_name: picard_mcp-db-django-prod
+    volumes:
+      - postgres_data_django_prod:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_USER=django_client_user
+      - POSTGRES_PASSWORD=render_test_password
+      - POSTGRES_DB=django_client
+    ports:
+      - "5434:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U django_client_user -d django_client"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # MCP server
+  mcp_server:
+    build: ./mcp_server
+    container_name: picard_mcp-mcp_server-prod
+    ports:
+      - "8001:8000"
+    depends_on:
+      db-mcp:
+        condition: service_healthy
+    environment:
+      - POSTGRES_HOST=db-mcp
+      - POSTGRES_PORT=5432
+      - POSTGRES_USER=picard_mcp_user
+      - POSTGRES_PASSWORD=render_test_password
+      - POSTGRES_DB=picard_mcp
+      - ENVIRONMENT=production
+      - LOG_LEVEL=INFO
+      - ADMIN_USERNAME=admin
+      - ADMIN_PASSWORD=adminpassword123
+      - ADMIN_EMAIL=admin@render.picard-mcp.com
+      - MCP_ISSUER_URL=http://localhost:8001
+      - SECRET_KEY=test-secret-key-for-local-production-testing
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    command: |
+      sh -c "python scripts/startup_tasks.py && uvicorn app.main:app --host 0.0.0.0 --port 8000"
+
+  # Django client
+  django_client:
+    build: ./django_client
+    container_name: picard_mcp-django_client-prod
+    ports:
+      - "8000:8000"
+    depends_on:
+      db-django:
+        condition: service_healthy
+      mcp_server:
+        condition: service_started
+    environment:
+      - DB_HOST=db-django
+      - DB_PORT=5432
+      - DB_USER=django_client_user
+      - DB_PASSWORD=render_test_password
+      - DB_NAME=django_client
+      - DEBUG=false
+      - DJANGO_SECRET_KEY=test-django-secret-key-for-local-production-testing
+      - MCP_SERVER_URL=http://mcp_server:8000
+      - MCP_SERVER_INTERNAL_URL=http://mcp_server:8000
+      - OAUTH_REDIRECT_URI=http://localhost:8000/oauth/callback
+      - OAUTH_SCOPES=memories:read memories:write
+      - ADMIN_USERNAME=admin
+      - ADMIN_PASSWORD=adminpassword123
+    command: |
+      sh -c "python scripts/render_startup.py && gunicorn django_client.wsgi:application --bind 0.0.0.0:8000"
+
+volumes:
+  postgres_data_mcp_prod:
+  postgres_data_django_prod:

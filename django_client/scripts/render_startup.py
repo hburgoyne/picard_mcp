@@ -116,6 +116,33 @@ def register_oauth_client():
     auth_credentials = f"{admin_username}:{admin_password}"
     auth_header = base64.b64encode(auth_credentials.encode()).decode()
     
+    # First check if we can fetch client info from MCP server
+    try:
+        # Try to fetch info about existing clients first
+        client_id = os.getenv('OAUTH_CLIENT_ID')
+        if client_id:
+            print(f"Found existing client ID: {client_id}, validating...")
+            try:
+                response = requests.get(
+                    f"{mcp_server_url}/api/oauth/client_info?client_id={client_id}",
+                    timeout=10
+                )
+                if response.status_code == 200:
+                    client_info = response.json()
+                    print(f"Validated existing client: {client_info['client_name']}")
+                    
+                    # If we already have a working client ID and we also have a client secret,
+                    # no need to register a new one
+                    if os.getenv('OAUTH_CLIENT_SECRET'):
+                        print("Using existing OAuth credentials")
+                        return True
+                    else:
+                        print("Client ID valid but missing client secret, will register new client")
+            except Exception as e:
+                print(f"Error validating client: {e}")
+    except Exception as e:
+        print(f"Error checking existing client: {e}")
+    
     # Prepare client registration data
     client_data = {
         'client_name': 'Picard MCP Django Client (Render)',
@@ -130,6 +157,7 @@ def register_oauth_client():
     }
     
     try:
+        print(f"Registering new OAuth client with {mcp_server_url}...")
         response = requests.post(
             f"{mcp_server_url}/api/admin/clients/register",
             json=client_data,
@@ -162,7 +190,16 @@ def register_oauth_client():
                 f.write(f"OAUTH_CLIENT_ID = '{client_id}'\n")
                 f.write(f"OAUTH_CLIENT_SECRET = '{client_secret}'\n")
             
-            print("OAuth credentials saved to environment and /tmp/oauth_credentials.env")
+            # Also write to .env file in the Django client directory for local development
+            try:
+                with open(os.path.join(project_root, '.env'), 'w') as f:
+                    f.write(f"OAUTH_CLIENT_ID={client_id}\n")
+                    f.write(f"OAUTH_CLIENT_SECRET={client_secret}\n")
+                print("OAuth credentials also saved to .env file")
+            except Exception as e:
+                print(f"Could not write to .env file: {e}")
+            
+            print("OAuth credentials saved to environment and credential files")
             return True
         else:
             print(f"OAuth client registration failed: {response.status_code} - {response.text}")

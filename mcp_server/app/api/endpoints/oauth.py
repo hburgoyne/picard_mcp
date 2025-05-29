@@ -38,6 +38,39 @@ from app.main import templates
 
 router = APIRouter()
 
+@router.get("/client_info")
+async def client_info(
+    client_id: uuid.UUID,
+    db: Session = Depends(get_db)
+):
+    """
+    Get basic public information about an OAuth client.
+    
+    This endpoint is used by the Django client to validate its credentials.
+    It only returns public information and requires no authentication.
+    
+    Args:
+        client_id: OAuth client ID to validate
+        db: Database session
+        
+    Returns:
+        Public client information or 404 error
+    """
+    client = validate_client(db, client_id)
+    if not client:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Client not found"
+        )
+    
+    # Return only public information
+    return {
+        "client_id": str(client.client_id),
+        "client_name": client.client_name,
+        "redirect_uris": client.redirect_uris,
+        "scopes": client.scopes,
+    }
+
 @router.post("/consent")
 async def consent(
     request: Request,

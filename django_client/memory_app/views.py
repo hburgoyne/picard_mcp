@@ -170,7 +170,43 @@ def oauth_callback(request):
         # Use the internal URL for server-to-server communication within Docker
         token_url = f"{settings.MCP_SERVER_INTERNAL_URL}/api/oauth/token"
         logger.info(f"Requesting token from: {token_url}")
+        logger.info(f"Using client ID: {settings.OAUTH_CLIENT_ID}")
+        
         response = requests.post(token_url, data=token_data)
+        
+        if response.status_code == 400:
+            try:
+                error_data = response.json()
+                error_type = error_data.get('error', 'unknown_error')
+                error_desc = error_data.get('error_description', 'Unknown error')
+                
+                if error_type == 'invalid_client':
+                    logger.error(f"Invalid OAuth client credentials. Client ID: {settings.OAUTH_CLIENT_ID}")
+                    messages.error(
+                        request, 
+                        'Authentication failed: Invalid client credentials. The OAuth client may need to be reconfigured.'
+                    )
+                    
+                    # Attempt to fix OAuth credentials
+                    from django.core.management import call_command
+                    try:
+                        logger.info("Attempting to fix OAuth credentials...")
+                        call_command('ensure_oauth_credentials', force=True)
+                        messages.warning(
+                            request,
+                            'OAuth credentials have been reset. Please try connecting again.'
+                        )
+                    except Exception as oauth_error:
+                        logger.error(f"Failed to fix OAuth credentials: {oauth_error}")
+                else:
+                    logger.error(f"OAuth token error: {error_type} - {error_desc}")
+                    messages.error(request, f'Authentication failed: {error_desc}')
+            except ValueError:
+                logger.error(f"OAuth token error: {response.text}")
+                messages.error(request, f'Authentication failed: {response.text}')
+            
+            return redirect('dashboard')
+            
         response.raise_for_status()
         token_info = response.json()
         

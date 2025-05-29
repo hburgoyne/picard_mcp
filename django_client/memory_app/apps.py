@@ -14,14 +14,21 @@ class MemoryAppConfig(AppConfig):
         try:
             from django.conf import settings
             if getattr(settings, 'ENSURE_OAUTH_CREDENTIALS', False):
+                logger.info("ENSURE_OAUTH_CREDENTIALS enabled - checking OAuth credentials")
                 self.ensure_oauth_credentials()
         except Exception as e:
             logger.warning(f"Failed to ensure OAuth credentials: {e}")
     
     def ensure_oauth_credentials(self):
         """Ensure OAuth credentials are properly configured."""
-        from django.conf import settings
-        from django.core.management import call_command
+        try:
+            from django.conf import settings
+            from django.core.management import call_command
+            
+            logger.info("Running OAuth credentials check...")
+            call_command('ensure_oauth_credentials')
+        except Exception as e:
+            logger.error(f"Failed to ensure OAuth credentials: {e}")
         
         # Check if we're using default credentials
         using_defaults = (

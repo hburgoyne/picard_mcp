@@ -1,5 +1,7 @@
 from django.urls import path
 from . import views
+from . import views_health
+from . import views_admin
 
 urlpatterns = [
     path('dashboard/', views.dashboard, name='dashboard'),
@@ -13,4 +15,11 @@ urlpatterns = [
     path('memories/search/', views.search_memories, name='search_memories'),
     path('query/user/', views.query_user, name='query_user'),
     path('profile/', views.profile_view, name='profile'),
+    
+    # Health check endpoint
+    path('health/', views_health.health_check, name='health_check'),
+    
+    # Admin endpoints
+    path('admin/fix-oauth/', views_admin.fix_oauth_credentials, name='fix_oauth_credentials'),
+    path('admin/fix-oauth-basic/', views_admin.fix_oauth_credentials_basic_auth, name='fix_oauth_credentials_basic_auth'),
 ]

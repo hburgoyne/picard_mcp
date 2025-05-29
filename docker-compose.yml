@@ -72,6 +72,8 @@ services:
       - DB_HOST=db-django
       - DB_PORT=5432
       - MCP_SERVER_INTERNAL_URL=http://mcp_server:8000
+      - ENSURE_OAUTH_CREDENTIALS=true
+      - ADMIN_PASSWORD=adminpassword
     command: python manage.py runserver 0.0.0.0:8000
 
 volumes:

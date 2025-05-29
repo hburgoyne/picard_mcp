@@ -112,6 +112,8 @@ services:
         sync: false  # Will be set by startup script
       - key: OAUTH_CLIENT_SECRET
         sync: false  # Will be set by startup script
+      - key: ENSURE_OAUTH_CREDENTIALS
+        value: true  # Force OAuth registration check on startup
       - key: ADMIN_USERNAME
         value: admin
       - key: ADMIN_PASSWORD

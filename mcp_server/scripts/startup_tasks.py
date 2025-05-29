@@ -19,8 +19,10 @@ def setup_database():
     # Check if we can connect to the database
     try:
         from app.db.session import SessionLocal
+        from sqlalchemy import text
+        
         db = SessionLocal()
-        db.execute("SELECT 1")
+        db.execute(text("SELECT 1"))
         db.close()
         print("Database connection successful")
     except Exception as e:
@@ -30,8 +32,10 @@ def setup_database():
     # Install pgvector extension if needed
     try:
         from app.db.session import SessionLocal
+        from sqlalchemy import text
+        
         db = SessionLocal()
-        db.execute("CREATE EXTENSION IF NOT EXISTS vector")
+        db.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
         db.commit()
         db.close()
         print("pgvector extension enabled")

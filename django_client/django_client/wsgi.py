@@ -13,6 +13,13 @@ application = get_wsgi_application()
 if os.environ.get('ENSURE_OAUTH_CREDENTIALS') == 'true':
     try:
         logging.info("Ensuring OAuth credentials via WSGI startup")
+        # Import additional modules that might be needed by the command
+        import time
+        import requests
+        import json
+        import base64
+        import uuid
+        
         from django.core.management import call_command
         call_command('ensure_oauth_credentials')
     except Exception as e:

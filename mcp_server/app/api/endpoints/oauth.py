@@ -40,7 +40,7 @@ router = APIRouter()
 
 @router.get("/client_info")
 async def client_info(
-    client_id: uuid.UUID,
+    client_id: str,
     db: Session = Depends(get_db)
 ):
     """
@@ -50,14 +50,27 @@ async def client_info(
     It only returns public information and requires no authentication.
     
     Args:
-        client_id: OAuth client ID to validate
+        client_id: OAuth client ID to validate (string UUID)
         db: Database session
         
     Returns:
         Public client information or 404 error
     """
-    client = validate_client(db, client_id)
+    logger.info(f"Validating client ID: {client_id}")
+    
+    # Convert string to UUID, handling potential format issues
+    try:
+        client_uuid = uuid.UUID(client_id)
+    except ValueError:
+        logger.warning(f"Invalid UUID format for client_id: {client_id}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid client_id format"
+        )
+    
+    client = validate_client(db, client_uuid)
     if not client:
+        logger.warning(f"Client not found: {client_id}")
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Client not found"

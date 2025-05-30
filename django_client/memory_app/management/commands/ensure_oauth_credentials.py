@@ -6,9 +6,14 @@ import requests
 import json
 import base64
 import uuid
+import time
+import logging
+from pathlib import Path
 from django.core.management.base import BaseCommand
 from django.conf import settings
 from dotenv import load_dotenv
+
+logger = logging.getLogger(__name__)
 
 class Command(BaseCommand):
     help = 'Ensure OAuth credentials are properly configured for the MCP server'
@@ -57,7 +62,7 @@ class Command(BaseCommand):
     def check_if_registration_needed(self):
         """Check if we need to register new OAuth credentials by validating the current ones."""
         from django.conf import settings
-        import time
+        import time  # Ensure time is imported in this scope
         
         # Check if we're using default credentials
         using_defaults = (
@@ -106,7 +111,8 @@ class Command(BaseCommand):
         """Register OAuth client with the MCP server."""
         # Get MCP server URL - prefer internal URL for server-to-server communication
         from django.conf import settings
-        import time
+        import os  # Ensure os is imported in this scope
+        import time  # Ensure time is imported in this scope
         
         mcp_server_url = getattr(settings, 'MCP_SERVER_INTERNAL_URL', None) or \
                         getattr(settings, 'MCP_SERVER_URL', 'http://mcp_server:8000')

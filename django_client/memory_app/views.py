@@ -191,6 +191,9 @@ def oauth_callback(request):
                     from django.core.management import call_command
                     try:
                         logger.info("Attempting to fix OAuth credentials...")
+                        # Import required modules explicitly to avoid errors
+                        import os
+                        import time
                         call_command('ensure_oauth_credentials', force=True)
                         messages.warning(
                             request,

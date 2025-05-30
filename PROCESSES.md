@@ -21,6 +21,11 @@ Run MCP server tests in Docker container (✅ 46/46 passing)
 docker-compose exec mcp_server pytest -xvs
 ```
 
+Test OAuth credentials directly
+```
+docker-compose exec django_client python test_oauth_credentials.py
+```
+
 ---
 
 Create new branch, then back to main (used to create 'deploy' branch):

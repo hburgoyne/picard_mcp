@@ -1,5 +1,5 @@
 """
-Main API router that includes all endpoint routers.
+Main API router that includes all endpoint routers for the MCP server.
 """
 from fastapi import APIRouter
 from app.api.endpoints import health, oauth, admin, token_management, user_tokens, tools

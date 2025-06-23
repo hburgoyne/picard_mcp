@@ -96,31 +96,6 @@ This simplified approach allows users to authenticate only once with the Django 
    - Tokens are blacklisted after use to prevent replay attacks
    - Refresh tokens use rotation: each use generates a new refresh token and invalidates the old one
 
-#### 2. Standard OAuth 2.0 Authorization Code Flow with PKCE (📋 PLANNED FOR FUTURE)
-
-The system architecture supports the standard OAuth 2.0 Authorization Code flow with PKCE for enhanced security, following RFC 6749 and RFC 7636 standards. This approach would require users to authenticate with both the client and the MCP server, but is not currently implemented:
-
-1. **Authorization Flow**:
-   - User initiates login through the Django client
-   - Client generates a cryptographically secure random `state` parameter for CSRF protection
-   - Client generates a random PKCE `code_verifier` and derives `code_challenge` using SHA-256
-   - Client redirects to MCP server's `/authorize` endpoint with:
-     - `response_type=code`
-     - `client_id` (UUID format)
-     - `redirect_uri`
-     - `scope` (space-separated list, e.g., `memories:read memories:write`)
-     - `state` (for CSRF protection)
-     - PKCE parameters (`code_challenge` and `code_challenge_method=S256`)
-   - MCP server authenticates the user (if not already authenticated)
-   - MCP server validates all parameters and redirects back to the client with a short-lived authorization code
-
-2. **Token Exchange**:
-   - Client verifies the returned `state` parameter matches the one sent in the authorization request
-   - Client exchanges the authorization code for access and refresh tokens via `/token` endpoint
-   - MCP server issues a JWT access token, refresh token, expiration time, and granted scopes
-
-3. **API Access**:
-   - Same as in the Direct Connect approach
 
 ### Database Models
 

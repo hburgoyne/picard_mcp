@@ -29,7 +29,7 @@ class Command(BaseCommand):
         try:
             # Send registration request to MCP server
             response = requests.post(
-                f"{mcp_server_url}/register",
+                f"{mcp_server_url}/api/admin/clients/register",
                 json=client_data,
                 headers={'Content-Type': 'application/json'}
             )

@@ -1,3 +1,5 @@
+[![MseeP.ai Security Assessment Badge](https://mseep.net/pr/hburgoyne-picard-mcp-badge.png)](https://mseep.ai/app/hburgoyne-picard-mcp)
+
 # Picard MCP Server
 
 ## Overview
